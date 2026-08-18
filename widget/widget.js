@@ -115,8 +115,12 @@ const color =
         link.rel =
             "stylesheet";
 
+        // Ruta absoluta resuelta a partir del propio script (currentScript.src),
+        // así el CSS siempre se pide al dominio del widget, sin importar en qué
+        // sitio esté instalado (antes esto era "style.css" relativo, y por eso
+        // el navegador terminaba pidiéndolo al dominio de la página cliente).
         link.href =
-            "style.css";
+            new URL("style.css", currentScript.src).href;
 
         link.setAttribute(
             "data-ai-business-assistant",
