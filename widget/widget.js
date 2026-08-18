@@ -29,8 +29,8 @@
         currentScript.getAttribute("data-api-key");
 
     const apiUrl =
-        currentScript.getAttribute("data-api-url") ||
-        "http://127.0.0.1:8000";
+        script.dataset.apiUrl ||
+        "https://api.zelekpress.com";
 
     const botName =
         currentScript.getAttribute("data-bot-name") ||
