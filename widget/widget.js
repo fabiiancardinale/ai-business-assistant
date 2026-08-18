@@ -25,20 +25,20 @@
     // CONFIGURACIÓN
     // =====================================================
 
-    const apiKey =
-        currentScript.getAttribute("data-api-key");
+const apiKey =
+    currentScript.getAttribute("data-api-key");
 
-    const apiUrl =
-        script.dataset.apiUrl ||
-        "https://api.zelekpress.com";
+const apiUrl =
+    currentScript.getAttribute("data-api-url") ||
+    "https://api.zelekpress.com";
 
-    const botName =
-        currentScript.getAttribute("data-bot-name") ||
-        "Asistente IA";
+const botName =
+    currentScript.getAttribute("data-bot-name") ||
+    "Asistente IA";
 
-    const color =
-        currentScript.getAttribute("data-color") ||
-        "#111827";
+const color =
+    currentScript.getAttribute("data-color") ||
+    "#111827";
 
 
     console.log(
