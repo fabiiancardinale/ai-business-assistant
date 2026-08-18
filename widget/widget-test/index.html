@@ -1,0 +1,1151 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Página demo para probar AI Business Assistant"
+    >
+
+    <title>NovaTech | Soluciones Digitales</title>
+
+    <link
+        rel="stylesheet"
+        href="../style.css"
+    >
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family:
+                Inter,
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            color: #111827;
+            background: #ffffff;
+            line-height: 1.6;
+        }
+
+
+        /* =========================================
+           HEADER
+        ========================================= */
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+
+            background: rgba(255,255,255,.95);
+
+            backdrop-filter: blur(12px);
+
+            border-bottom:
+                1px solid #e5e7eb;
+        }
+
+
+        .navbar {
+
+            max-width: 1200px;
+
+            margin: auto;
+
+            padding:
+                18px 24px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+        }
+
+
+        .logo {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            font-size: 21px;
+
+            font-weight: 800;
+
+            color: #111827;
+        }
+
+
+        .logo-icon {
+
+            width: 38px;
+            height: 38px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            border-radius: 10px;
+
+            background: #111827;
+
+            color: white;
+
+            font-weight: 800;
+        }
+
+
+        nav {
+
+            display: flex;
+
+            gap: 30px;
+        }
+
+
+        nav a {
+
+            text-decoration: none;
+
+            color: #4b5563;
+
+            font-size: 14px;
+
+            font-weight: 600;
+
+            transition: .2s;
+        }
+
+
+        nav a:hover {
+            color: #111827;
+        }
+
+
+        .nav-button {
+
+            padding:
+                10px 18px;
+
+            border-radius: 9px;
+
+            background: #111827;
+
+            color: white !important;
+        }
+
+
+        /* =========================================
+           HERO
+        ========================================= */
+
+        .hero {
+
+            position: relative;
+
+            overflow: hidden;
+
+            padding:
+                110px 24px
+                120px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #f8fafc,
+                    #eef2ff
+                );
+        }
+
+
+        .hero-container {
+
+            max-width: 1150px;
+
+            margin: auto;
+
+            display: grid;
+
+            grid-template-columns:
+                1.1fr
+                .9fr;
+
+            gap: 70px;
+
+            align-items: center;
+        }
+
+
+        .badge {
+
+            display: inline-block;
+
+            padding:
+                7px 13px;
+
+            margin-bottom: 20px;
+
+            border-radius: 999px;
+
+            background: #e0e7ff;
+
+            color: #3730a3;
+
+            font-size: 13px;
+
+            font-weight: 700;
+        }
+
+
+        .hero h1 {
+
+            font-size:
+                clamp(
+                    42px,
+                    6vw,
+                    68px
+                );
+
+            line-height: 1.05;
+
+            letter-spacing: -2px;
+
+            margin-bottom: 24px;
+        }
+
+
+        .hero h1 span {
+            color: #4f46e5;
+        }
+
+
+        .hero p {
+
+            max-width: 600px;
+
+            color: #6b7280;
+
+            font-size: 18px;
+
+            margin-bottom: 32px;
+        }
+
+
+        .hero-buttons {
+
+            display: flex;
+
+            gap: 14px;
+
+            flex-wrap: wrap;
+        }
+
+
+        .button {
+
+            display: inline-block;
+
+            padding:
+                14px 22px;
+
+            border-radius: 10px;
+
+            text-decoration: none;
+
+            font-weight: 700;
+
+            transition: .2s;
+        }
+
+
+        .button-primary {
+
+            background: #111827;
+
+            color: white;
+        }
+
+
+        .button-primary:hover {
+
+            transform:
+                translateY(-2px);
+
+            box-shadow:
+                0 10px 25px
+                rgba(0,0,0,.15);
+        }
+
+
+        .button-secondary {
+
+            border:
+                1px solid #d1d5db;
+
+            background: white;
+
+            color: #111827;
+        }
+
+
+        /* =========================================
+           HERO CARD
+        ========================================= */
+
+        .hero-card {
+
+            padding: 30px;
+
+            border-radius: 22px;
+
+            background: white;
+
+            border:
+                1px solid #e5e7eb;
+
+            box-shadow:
+                0 25px 60px
+                rgba(15,23,42,.12);
+        }
+
+
+        .hero-card-header {
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            margin-bottom: 25px;
+        }
+
+
+        .status {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 7px;
+
+            color: #16a34a;
+
+            font-size: 13px;
+
+            font-weight: 700;
+        }
+
+
+        .status-dot {
+
+            width: 8px;
+            height: 8px;
+
+            border-radius: 50%;
+
+            background: #22c55e;
+        }
+
+
+        .metric {
+
+            padding: 20px;
+
+            margin-bottom: 15px;
+
+            border-radius: 14px;
+
+            background: #f8fafc;
+        }
+
+
+        .metric-label {
+
+            color: #6b7280;
+
+            font-size: 13px;
+        }
+
+
+        .metric-value {
+
+            font-size: 30px;
+
+            font-weight: 800;
+        }
+
+
+        /* =========================================
+           SERVICES
+        ========================================= */
+
+        .section {
+
+            padding:
+                100px 24px;
+        }
+
+
+        .section-light {
+            background: #ffffff;
+        }
+
+
+        .section-gray {
+            background: #f8fafc;
+        }
+
+
+        .section-header {
+
+            max-width: 700px;
+
+            margin:
+                0 auto 55px;
+
+            text-align: center;
+        }
+
+
+        .section-header h2 {
+
+            font-size: 40px;
+
+            line-height: 1.15;
+
+            margin-bottom: 15px;
+        }
+
+
+        .section-header p {
+
+            color: #6b7280;
+
+            font-size: 17px;
+        }
+
+
+        .cards {
+
+            max-width: 1150px;
+
+            margin: auto;
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    3,
+                    1fr
+                );
+
+            gap: 24px;
+        }
+
+
+        .card {
+
+            padding: 32px;
+
+            border:
+                1px solid #e5e7eb;
+
+            border-radius: 18px;
+
+            background: white;
+
+            transition: .25s;
+        }
+
+
+        .card:hover {
+
+            transform:
+                translateY(-5px);
+
+            box-shadow:
+                0 15px 35px
+                rgba(0,0,0,.08);
+        }
+
+
+        .card-icon {
+
+            width: 50px;
+            height: 50px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            margin-bottom: 20px;
+
+            border-radius: 12px;
+
+            background: #eef2ff;
+
+            font-size: 23px;
+        }
+
+
+        .card h3 {
+
+            font-size: 20px;
+
+            margin-bottom: 10px;
+        }
+
+
+        .card p {
+
+            color: #6b7280;
+
+            font-size: 15px;
+        }
+
+
+        /* =========================================
+           STATS
+        ========================================= */
+
+        .stats {
+
+            max-width: 1000px;
+
+            margin: auto;
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(3, 1fr);
+
+            text-align: center;
+
+            gap: 30px;
+        }
+
+
+        .stat strong {
+
+            display: block;
+
+            font-size: 40px;
+
+            font-weight: 800;
+        }
+
+
+        .stat span {
+
+            color: #6b7280;
+
+            font-size: 14px;
+        }
+
+
+        /* =========================================
+           TESTIMONIOS
+        ========================================= */
+
+        .testimonial {
+
+            max-width: 800px;
+
+            margin: auto;
+
+            padding: 40px;
+
+            background: white;
+
+            border:
+                1px solid #e5e7eb;
+
+            border-radius: 20px;
+
+            text-align: center;
+        }
+
+
+        .testimonial p {
+
+            font-size: 20px;
+
+            color: #374151;
+
+            margin-bottom: 25px;
+        }
+
+
+        .testimonial strong {
+
+            display: block;
+        }
+
+
+        .testimonial span {
+
+            color: #6b7280;
+
+            font-size: 14px;
+        }
+
+
+        /* =========================================
+           CTA
+        ========================================= */
+
+        .cta {
+
+            padding:
+                100px 24px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #111827,
+                    #312e81
+                );
+
+            color: white;
+
+            text-align: center;
+        }
+
+
+        .cta h2 {
+
+            font-size: 42px;
+
+            margin-bottom: 15px;
+        }
+
+
+        .cta p {
+
+            max-width: 600px;
+
+            margin:
+                0 auto 30px;
+
+            color: #d1d5db;
+
+            font-size: 17px;
+        }
+
+
+        .cta .button {
+
+            background: white;
+
+            color: #111827;
+        }
+
+
+        /* =========================================
+           FOOTER
+        ========================================= */
+
+        footer {
+
+            padding:
+                35px 24px;
+
+            background: #030712;
+
+            color: #9ca3af;
+
+            text-align: center;
+
+            font-size: 14px;
+        }
+
+
+        /* =========================================
+           RESPONSIVE
+        ========================================= */
+
+        @media (max-width: 850px) {
+
+            nav {
+                display: none;
+            }
+
+
+            .hero-container {
+
+                grid-template-columns: 1fr;
+
+                gap: 45px;
+            }
+
+
+            .hero {
+
+                padding-top: 80px;
+            }
+
+
+            .cards {
+
+                grid-template-columns: 1fr;
+            }
+
+
+            .stats {
+
+                grid-template-columns: 1fr;
+            }
+
+
+            .section-header h2 {
+
+                font-size: 32px;
+            }
+
+
+            .cta h2 {
+
+                font-size: 34px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<!-- =========================================
+     HEADER
+========================================= -->
+
+<header>
+
+    <div class="navbar">
+
+        <div class="logo">
+
+            <div class="logo-icon">
+                N
+            </div>
+
+            NovaTech
+
+        </div>
+
+
+        <nav>
+
+            <a href="#inicio">
+                Inicio
+            </a>
+
+            <a href="#servicios">
+                Servicios
+            </a>
+
+            <a href="#nosotros">
+                Nosotros
+            </a>
+
+            <a href="#contacto"
+               class="nav-button">
+                Contactar
+            </a>
+
+        </nav>
+
+    </div>
+
+</header>
+
+
+<!-- =========================================
+     HERO
+========================================= -->
+
+<section
+    class="hero"
+    id="inicio"
+>
+
+    <div class="hero-container">
+
+
+        <div>
+
+            <span class="badge">
+                Tecnología para empresas
+            </span>
+
+
+            <h1>
+
+                Transformamos ideas
+                en <span>soluciones digitales.</span>
+
+            </h1>
+
+
+            <p>
+
+                Ayudamos a empresas a automatizar
+                procesos, mejorar su productividad
+                y aprovechar las nuevas tecnologías.
+
+            </p>
+
+
+            <div class="hero-buttons">
+
+                <a
+                    href="#servicios"
+                    class="button button-primary"
+                >
+                    Ver servicios
+                </a>
+
+
+                <a
+                    href="#contacto"
+                    class="button button-secondary"
+                >
+                    Hablar con nosotros
+                </a>
+
+            </div>
+
+        </div>
+
+
+        <div class="hero-card">
+
+            <div class="hero-card-header">
+
+                <strong>
+                    Resumen empresarial
+                </strong>
+
+                <div class="status">
+
+                    <span class="status-dot"></span>
+
+                    Operativo
+
+                </div>
+
+            </div>
+
+
+            <div class="metric">
+
+                <div class="metric-label">
+                    Procesos automatizados
+                </div>
+
+                <div class="metric-value">
+                    +85%
+                </div>
+
+            </div>
+
+
+            <div class="metric">
+
+                <div class="metric-label">
+                    Tiempo ahorrado
+                </div>
+
+                <div class="metric-value">
+                    40 h/mes
+                </div>
+
+            </div>
+
+
+            <div class="metric">
+
+                <div class="metric-label">
+                    Satisfacción clientes
+                </div>
+
+                <div class="metric-value">
+                    98%
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================
+     SERVICIOS
+========================================= -->
+
+<section
+    class="section section-light"
+    id="servicios"
+>
+
+    <div class="section-header">
+
+        <h2>
+            Soluciones para hacer crecer tu empresa
+        </h2>
+
+        <p>
+            Tecnología diseñada para simplificar
+            operaciones y mejorar la experiencia
+            de tus clientes.
+        </p>
+
+    </div>
+
+
+    <div class="cards">
+
+
+        <div class="card">
+
+            <div class="card-icon">
+                ⚙️
+            </div>
+
+            <h3>
+                Automatización
+            </h3>
+
+            <p>
+                Automatizamos tareas repetitivas
+                para que tu equipo pueda enfocarse
+                en actividades de mayor valor.
+            </p>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-icon">
+                🤖
+            </div>
+
+            <h3>
+                Inteligencia artificial
+            </h3>
+
+            <p>
+                Implementamos asistentes virtuales
+                capaces de atender clientes y
+                responder preguntas automáticamente.
+            </p>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-icon">
+                🌐
+            </div>
+
+            <h3>
+                Desarrollo web
+            </h3>
+
+            <p>
+                Creamos plataformas web modernas,
+                rápidas y adaptadas a las necesidades
+                de cada negocio.
+            </p>
+
+        </div>
+
+
+    </div>
+
+</section>
+
+
+<!-- =========================================
+     ESTADÍSTICAS
+========================================= -->
+
+<section
+    class="section section-gray"
+    id="nosotros"
+>
+
+    <div class="stats">
+
+
+        <div class="stat">
+
+            <strong>
+                +50
+            </strong>
+
+            <span>
+                Proyectos realizados
+            </span>
+
+        </div>
+
+
+        <div class="stat">
+
+            <strong>
+                98%
+            </strong>
+
+            <span>
+                Clientes satisfechos
+            </span>
+
+        </div>
+
+
+        <div class="stat">
+
+            <strong>
+                24/7
+            </strong>
+
+            <span>
+                Atención disponible
+            </span>
+
+        </div>
+
+
+    </div>
+
+</section>
+
+
+<!-- =========================================
+     TESTIMONIO
+========================================= -->
+
+<section class="section section-light">
+
+    <div class="testimonial">
+
+        <p>
+            “La automatización nos permitió reducir
+            considerablemente el tiempo que nuestro
+            equipo dedica a tareas repetitivas.”
+        </p>
+
+
+        <strong>
+            Carlos Martínez
+        </strong>
+
+
+        <span>
+            Gerente de Operaciones
+        </span>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================
+     CTA
+========================================= -->
+
+<section
+    class="cta"
+    id="contacto"
+>
+
+    <h2>
+        ¿Tienes alguna pregunta?
+    </h2>
+
+
+    <p>
+        Nuestro equipo está disponible para
+        ayudarte. También puedes utilizar el
+        asistente virtual que aparece en esta página.
+    </p>
+
+
+    <a
+        href="#inicio"
+        class="button"
+    >
+        Volver al inicio
+    </a>
+
+</section>
+
+
+<!-- =========================================
+     FOOTER
+========================================= -->
+
+<footer>
+
+    © 2026 NovaTech · Página de demostración
+
+</footer>
+
+
+<!-- =========================================
+     AI BUSINESS ASSISTANT
+========================================= -->
+
+<div id="ai-business-assistant"></div>
+
+
+<script
+    src="../widget.js"
+    data-api-key="zb_live_sD-e35-LtQ8fayR4dKgxxVE73uMFRZpJNZE8G-A2zVM"
+    data-api-url="http://127.0.0.1:8000"
+    data-bot-name="Asistente NovaTech"
+    data-color="#111827"
+></script>
+
+
+</body>
+
+</html>
+```

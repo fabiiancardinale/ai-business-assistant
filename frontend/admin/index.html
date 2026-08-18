@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>AI Business Assistant - Admin</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="layout">
+
+        <!-- SIDEBAR -->
+
+        <aside class="sidebar">
+
+            <div class="logo">
+                <div class="logo-icon">AI</div>
+
+                <div>
+                    <strong>AI Assistant</strong>
+                    <span>Panel de control</span>
+                </div>
+            </div>
+
+
+            <nav>
+
+                <button
+                    class="nav-item active"
+                    data-section="dashboard"
+                >
+                    📊
+                    <span>Dashboard</span>
+                </button>
+
+                <button
+                    class="nav-item"
+                    data-section="companies"
+                >
+                    🏢
+                    <span>Empresas</span>
+                </button>
+
+                <button
+                    class="nav-item"
+                    data-section="conversations"
+                >
+                    💬
+                    <span>Conversaciones</span>
+                </button>
+
+                <button
+                    class="nav-item"
+                    data-section="settings"
+                >
+                    ⚙️
+                    <span>Configuración</span>
+                </button>
+
+            </nav>
+
+
+            <div class="sidebar-footer">
+
+                <div class="status-dot"></div>
+
+                <div>
+                    <strong>Servidor local</strong>
+                    <span>Conectado</span>
+                </div>
+
+            </div>
+
+        </aside>
+
+
+        <!-- MAIN -->
+
+        <main class="main">
+
+            <header class="topbar">
+
+                <div>
+                    <h1 id="pageTitle">
+                        Dashboard
+                    </h1>
+
+                    <p id="pageDescription">
+                        Resumen de tu asistente IA
+                    </p>
+                </div>
+
+
+                <div class="server-status">
+
+                    <span class="online-dot"></span>
+
+                    API conectada
+
+                </div>
+
+            </header>
+
+
+            <!-- DASHBOARD -->
+
+            <section
+                id="dashboard"
+                class="section active"
+            >
+
+                <div class="stats-grid">
+
+                    <div class="stat-card">
+
+                        <span>Empresas</span>
+
+                        <strong id="totalCompanies">
+                            0
+                        </strong>
+
+                        <small>
+                            Empresas registradas
+                        </small>
+
+                    </div>
+
+
+                    <div class="stat-card">
+
+                        <span>Conversaciones</span>
+
+                        <strong id="totalConversations">
+                            0
+                        </strong>
+
+                        <small>
+                            Conversaciones registradas
+                        </small>
+
+                    </div>
+
+
+                    <div class="stat-card">
+
+                        <span>Mensajes</span>
+
+                        <strong id="totalMessages">
+                            0
+                        </strong>
+
+                        <small>
+                            Mensajes procesados
+                        </small>
+
+                    </div>
+
+
+                    <div class="stat-card">
+
+                        <span>Estado IA</span>
+
+                        <strong class="success">
+                            ● Activa
+                        </strong>
+
+                        <small>
+                            Ollama / Qwen
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                <div class="card">
+
+                    <div class="card-header">
+
+                        <div>
+                            <h2>Empresas recientes</h2>
+
+                            <p>
+                                Empresas configuradas en el sistema
+                            </p>
+                        </div>
+
+                        <button
+                            id="dashboardCompaniesButton"
+                            class="button"
+                        >
+                            Ver empresas
+                        </button>
+
+                    </div>
+
+
+                    <div id="dashboardCompanies">
+
+                        <div class="loading">
+                            Cargando empresas...
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- EMPRESAS -->
+
+            <section
+                id="companies"
+                class="section"
+            >
+
+                <div class="section-actions">
+
+                    <div>
+                        <h2>Empresas</h2>
+
+                        <p>
+                            Administra los negocios conectados a tu IA.
+                        </p>
+                    </div>
+
+                    <button
+                        id="newCompanyButton"
+                        class="button primary"
+                    >
+                        + Nueva empresa
+                    </button>
+
+                </div>
+
+
+                <div class="card">
+
+                    <div
+                        id="companiesList"
+                        class="companies-list"
+                    >
+
+                        <div class="loading">
+                            Cargando empresas...
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+<section
+    id="company-detail"
+    class="section"
+>
+
+    <div class="section-actions">
+
+        <div>
+
+            <h2 id="detailCompanyName">
+                Empresa
+            </h2>
+
+            <p>
+                Configura la información que utilizará la IA.
+            </p>
+
+        </div>
+
+        <button
+            id="backToCompanies"
+            class="button"
+        >
+            ← Volver
+        </button>
+
+    </div>
+
+
+    <div class="card">
+
+        <div class="card-header">
+
+            <div>
+
+                <h2>
+                    Información de la IA
+                </h2>
+
+                <p>
+                    Este contenido será utilizado por el asistente
+                    para responder a los clientes.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <label class="knowledge-label">
+
+            Conocimiento de la empresa
+
+            <textarea
+                id="companyKnowledge"
+                rows="18"
+                placeholder="Escribe aquí la información de la empresa..."
+            ></textarea>
+
+        </label>
+
+
+        <div class="knowledge-actions">
+
+            <button
+                id="saveKnowledge"
+                class="button primary"
+            >
+                Guardar conocimiento
+            </button>
+
+            <span id="saveStatus"></span>
+
+        </div>
+
+    </div>
+
+</section>
+            <!-- CONVERSACIONES -->
+
+            <section
+                id="conversations"
+                class="section"
+            >
+
+                <div class="section-actions">
+
+                    <div>
+                        <h2>Conversaciones</h2>
+
+                        <p>
+                            Revisa las conversaciones de tus clientes.
+                        </p>
+                    </div>
+
+                </div>
+
+
+                <div class="empty-state">
+
+                    <div class="empty-icon">
+                        💬
+                    </div>
+
+                    <h3>
+                        Próximamente
+                    </h3>
+
+                    <p>
+                        Aquí mostraremos las conversaciones
+                        almacenadas en la base de datos.
+                    </p>
+
+                </div>
+
+            </section>
+
+
+            <!-- CONFIGURACIÓN -->
+
+            <section
+                id="settings"
+                class="section"
+            >
+
+                <div class="section-actions">
+
+                    <div>
+                        <h2>Configuración</h2>
+
+                        <p>
+                            Configuración general del asistente.
+                        </p>
+                    </div>
+
+                </div>
+
+
+                <div class="card settings-card">
+
+                    <h3>
+                        Inteligencia Artificial
+                    </h3>
+
+                    <div class="setting-row">
+
+                        <div>
+
+                            <strong>
+                                Modelo
+                            </strong>
+
+                            <span>
+                                Modelo utilizado por Ollama
+                            </span>
+
+                        </div>
+
+                        <span class="badge">
+                            Qwen
+                        </span>
+
+                    </div>
+
+
+                    <div class="setting-row">
+
+                        <div>
+
+                            <strong>
+                                Estado
+                            </strong>
+
+                            <span>
+                                Sistema de IA
+                            </span>
+
+                        </div>
+
+                        <span class="badge success-badge">
+                            Activo
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+
+    <!-- MODAL -->
+
+    <div
+        id="companyModal"
+        class="modal"
+    >
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <div>
+                    <h2>Nueva empresa</h2>
+
+                    <p>
+                        Registra una nueva empresa.
+                    </p>
+                </div>
+
+                <button
+                    id="closeModal"
+                    class="close-button"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <form id="companyForm">
+
+                <label>
+                    Nombre de empresa
+
+                    <input
+                        id="companyName"
+                        type="text"
+                        required
+                    >
+
+                </label>
+
+
+                <label>
+                    Correo
+
+                    <input
+                        id="companyEmail"
+                        type="email"
+                        required
+                    >
+
+                </label>
+
+
+                <label>
+                    Teléfono
+
+                    <input
+                        id="companyPhone"
+                        type="text"
+                    >
+
+                </label>
+
+
+                <label>
+                    Sitio web
+
+                    <input
+                        id="companyWebsite"
+                        type="url"
+                    >
+
+                </label>
+
+
+                <button
+                    type="submit"
+                    class="button primary full"
+                >
+                    Crear empresa
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <script src="app.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,634 @@
+(function () {
+
+    "use strict";
+
+    console.log("AI Business Assistant: iniciando widget...");
+
+
+    // =====================================================
+    // OBTENER SCRIPT ACTUAL
+    // =====================================================
+
+    const currentScript = document.currentScript;
+
+    if (!currentScript) {
+
+        console.error(
+            "AI Business Assistant: no se pudo detectar el script."
+        );
+
+        return;
+    }
+
+
+    // =====================================================
+    // CONFIGURACIÓN
+    // =====================================================
+
+    const apiKey =
+        currentScript.getAttribute("data-api-key");
+
+    const apiUrl =
+        currentScript.getAttribute("data-api-url") ||
+        "http://127.0.0.1:8000";
+
+    const botName =
+        currentScript.getAttribute("data-bot-name") ||
+        "Asistente IA";
+
+    const color =
+        currentScript.getAttribute("data-color") ||
+        "#111827";
+
+
+    console.log(
+        "AI Business Assistant: configuración cargada",
+        {
+            apiUrl: apiUrl,
+            botName: botName
+        }
+    );
+
+
+    // =====================================================
+    // VALIDAR API KEY
+    // =====================================================
+
+    if (!apiKey) {
+
+        console.error(
+            "AI Business Assistant: falta data-api-key."
+        );
+
+        return;
+    }
+
+
+    // =====================================================
+    // CREAR CONTENEDOR AUTOMÁTICAMENTE
+    // =====================================================
+
+    let container =
+        document.getElementById(
+            "ai-business-assistant"
+        );
+
+
+    if (!container) {
+
+        console.warn(
+            "AI Business Assistant: no existe #ai-business-assistant. Creándolo automáticamente."
+        );
+
+        container =
+            document.createElement("div");
+
+        container.id =
+            "ai-business-assistant";
+
+        document.body.appendChild(
+            container
+        );
+
+    }
+
+
+    // =====================================================
+    // CARGAR CSS
+    // =====================================================
+
+    function loadCSS() {
+
+        const existing =
+            document.querySelector(
+                'link[data-ai-business-assistant="true"]'
+            );
+
+        if (existing) {
+            return;
+        }
+
+
+        const link =
+            document.createElement("link");
+
+        link.rel =
+            "stylesheet";
+
+        link.href =
+            "style.css";
+
+        link.setAttribute(
+            "data-ai-business-assistant",
+            "true"
+        );
+
+        document.head.appendChild(
+            link
+        );
+
+    }
+
+
+    loadCSS();
+
+
+    // =====================================================
+    // HTML DEL WIDGET
+    // =====================================================
+
+    container.innerHTML = `
+
+        <div class="aiba-widget">
+
+            <button
+                type="button"
+                class="aiba-button"
+                id="aiba-open"
+                style="background-color: ${color};"
+                aria-label="Abrir asistente"
+            >
+                💬
+            </button>
+
+
+            <div
+                class="aiba-chat"
+                id="aiba-chat"
+            >
+
+                <div
+                    class="aiba-header"
+                    style="background-color: ${color};"
+                >
+
+                    <div class="aiba-header-info">
+
+                        <div class="aiba-bot-name">
+                            ${botName}
+                        </div>
+
+                        <div class="aiba-status">
+                            <span class="aiba-status-dot"></span>
+                            En línea
+                        </div>
+
+                    </div>
+
+
+                    <button
+                        type="button"
+                        class="aiba-close"
+                        id="aiba-close"
+                        aria-label="Cerrar"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+
+                <div
+                    class="aiba-messages"
+                    id="aiba-messages"
+                >
+
+                </div>
+
+
+                <div class="aiba-input-area">
+
+                    <input
+                        type="text"
+                        id="aiba-input"
+                        class="aiba-input"
+                        placeholder="Escribe tu mensaje..."
+                        autocomplete="off"
+                    />
+
+
+                    <button
+                        type="button"
+                        id="aiba-send"
+                        class="aiba-send"
+                        style="background-color: ${color};"
+                        aria-label="Enviar mensaje"
+                    >
+                        ➤
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    // =====================================================
+    // ELEMENTOS
+    // =====================================================
+
+    const openButton =
+        document.getElementById(
+            "aiba-open"
+        );
+
+    const closeButton =
+        document.getElementById(
+            "aiba-close"
+        );
+
+    const chat =
+        document.getElementById(
+            "aiba-chat"
+        );
+
+    const messages =
+        document.getElementById(
+            "aiba-messages"
+        );
+
+    const input =
+        document.getElementById(
+            "aiba-input"
+        );
+
+    const sendButton =
+        document.getElementById(
+            "aiba-send"
+        );
+
+
+    // =====================================================
+    // VALIDACIÓN
+    // =====================================================
+
+    if (
+        !openButton ||
+        !closeButton ||
+        !chat ||
+        !messages ||
+        !input ||
+        !sendButton
+    ) {
+
+        console.error(
+            "AI Business Assistant: no se pudo crear correctamente la interfaz."
+        );
+
+        return;
+    }
+
+
+    // =====================================================
+    // CONVERSACIÓN
+    // =====================================================
+
+    let conversationId = null;
+
+
+    // =====================================================
+    // AGREGAR MENSAJE
+    // =====================================================
+
+    function addMessage(
+        text,
+        type
+    ) {
+
+        const message =
+            document.createElement("div");
+
+        message.className =
+            "aiba-message " + type;
+
+
+        const bubble =
+            document.createElement("div");
+
+        bubble.className =
+            "aiba-bubble";
+
+
+        bubble.textContent =
+            text;
+
+
+        message.appendChild(
+            bubble
+        );
+
+
+        messages.appendChild(
+            message
+        );
+
+
+        messages.scrollTop =
+            messages.scrollHeight;
+
+    }
+
+
+    // =====================================================
+    // MENSAJE INICIAL
+    // =====================================================
+
+    addMessage(
+        "Hola 👋 ¿En qué puedo ayudarte?",
+        "bot"
+    );
+
+
+    // =====================================================
+    // ABRIR CHAT
+    // =====================================================
+
+    openButton.addEventListener(
+        "click",
+        function () {
+
+            chat.classList.add(
+                "aiba-visible"
+            );
+
+            input.focus();
+
+        }
+    );
+
+
+    // =====================================================
+    // CERRAR CHAT
+    // =====================================================
+
+    closeButton.addEventListener(
+        "click",
+        function () {
+
+            chat.classList.remove(
+                "aiba-visible"
+            );
+
+        }
+    );
+
+
+    // =====================================================
+    // TYPING
+    // =====================================================
+
+    function showTyping() {
+
+        removeTyping();
+
+
+        const typing =
+            document.createElement("div");
+
+        typing.id =
+            "aiba-typing";
+
+        typing.className =
+            "aiba-message bot";
+
+
+        typing.innerHTML = `
+
+            <div class="aiba-bubble aiba-typing">
+
+                <span></span>
+                <span></span>
+                <span></span>
+
+            </div>
+
+        `;
+
+
+        messages.appendChild(
+            typing
+        );
+
+
+        messages.scrollTop =
+            messages.scrollHeight;
+
+    }
+
+
+    function removeTyping() {
+
+        const typing =
+            document.getElementById(
+                "aiba-typing"
+            );
+
+        if (typing) {
+
+            typing.remove();
+
+        }
+
+    }
+
+
+    // =====================================================
+    // ENVIAR MENSAJE
+    // =====================================================
+
+    async function sendMessage() {
+
+        const message =
+            input.value.trim();
+
+
+        if (!message) {
+
+            return;
+
+        }
+
+
+        // Mostrar mensaje del usuario
+
+        addMessage(
+            message,
+            "user"
+        );
+
+
+        input.value = "";
+
+        input.disabled = true;
+
+        sendButton.disabled = true;
+
+
+        showTyping();
+
+
+        try {
+
+            console.log(
+                "AI Business Assistant: enviando mensaje..."
+            );
+
+
+            const response =
+                await fetch(
+                    apiUrl + "/api/chat",
+                    {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json",
+
+                            "X-API-Key":
+                                apiKey
+
+                        },
+
+                        body:
+                            JSON.stringify({
+
+                                message:
+                                    message,
+
+                                conversation_id:
+                                    conversationId
+
+                            })
+
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            removeTyping();
+
+
+            console.log(
+                "AI Business Assistant: respuesta recibida",
+                data
+            );
+
+
+            // =============================================
+            // ERROR API
+            // =============================================
+
+            if (!response.ok) {
+
+                addMessage(
+                    data.detail ||
+                    "Ocurrió un error al comunicarse con el asistente.",
+                    "bot"
+                );
+
+                return;
+            }
+
+
+            // =============================================
+            // GUARDAR CONVERSACIÓN
+            // =============================================
+
+            conversationId =
+                data.conversation_id;
+
+
+            // =============================================
+            // MOSTRAR RESPUESTA
+            // =============================================
+
+            addMessage(
+                data.response ||
+                "No recibí una respuesta.",
+                "bot"
+            );
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "AI Business Assistant: error de conexión",
+                error
+            );
+
+
+            removeTyping();
+
+
+            addMessage(
+                "No pude conectarme con el asistente.",
+                "bot"
+            );
+
+        }
+
+        finally {
+
+            input.disabled =
+                false;
+
+            sendButton.disabled =
+                false;
+
+            input.focus();
+
+        }
+
+    }
+
+
+    // =====================================================
+    // BOTÓN ENVIAR
+    // =====================================================
+
+    sendButton.addEventListener(
+        "click",
+        sendMessage
+    );
+
+
+    // =====================================================
+    // ENTER
+    // =====================================================
+
+    input.addEventListener(
+        "keydown",
+        function (event) {
+
+            if (
+                event.key === "Enter"
+            ) {
+
+                event.preventDefault();
+
+                sendMessage();
+
+            }
+
+        }
+    );
+
+
+    // =====================================================
+    // FINAL
+    // =====================================================
+
+    console.log(
+        "AI Business Assistant: widget cargado correctamente ✅"
+    );
+
+})();
