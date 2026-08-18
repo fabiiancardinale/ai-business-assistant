@@ -1,7 +1,11 @@
+import os
+import secrets
 from pathlib import Path
 
-from fastapi import FastAPI, Depends, Header, HTTPException
+from fastapi import FastAPI, Depends, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -46,6 +50,47 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# =========================================================
+# AUTENTICACIÓN DEL PANEL ADMINISTRATIVO (HTTP Basic Auth)
+#
+# IMPORTANTE: cambiá estas credenciales antes de usar el panel
+# en producción. Lo ideal es moverlas a variables de entorno
+# (ADMIN_USERNAME / ADMIN_PASSWORD) en vez de dejarlas
+# hardcodeadas acá.
+# =========================================================
+
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "cambia-esta-clave")
+
+security = HTTPBasic()
+
+
+def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
+    """
+    Dependencia que protege los endpoints y el panel administrativo.
+    Compara usuario/clave con secrets.compare_digest para evitar
+    ataques de timing (comparar strings con == es inseguro acá).
+    """
+
+    correct_username = secrets.compare_digest(
+        credentials.username, ADMIN_USERNAME
+    )
+
+    correct_password = secrets.compare_digest(
+        credentials.password, ADMIN_PASSWORD
+    )
+
+    if not (correct_username and correct_password):
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales incorrectas",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+    return credentials.username
 
 
 # =========================================================
@@ -132,6 +177,25 @@ def root():
 
 
 # =========================================================
+# PANEL ADMINISTRATIVO
+#
+# Sirve la carpeta admin/ (index.html, style.css, app.js) como
+# archivos estáticos en /admin. La seguridad real no está acá
+# (los archivos estáticos en sí no son sensibles): está en los
+# endpoints /companies, /companies/{id}/knowledge, etc., que
+# exigen usuario y contraseña (verify_admin) antes de devolver
+# o modificar cualquier dato. Aunque alguien abra /admin, no va
+# a poder ver ni cambiar nada sin esas credenciales.
+# =========================================================
+
+app.mount(
+    "/admin",
+    StaticFiles(directory="admin", html=True),
+    name="admin"
+)
+
+
+# =========================================================
 # CHAT INTERNO
 #
 # Utilizado por el panel administrativo.
@@ -140,7 +204,8 @@ def root():
 @app.post("/chat")
 def chat(
     request: ChatRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    admin_user: str = Depends(verify_admin)
 ):
 
     # =====================================================
@@ -633,7 +698,9 @@ def create_company_endpoint(
 
     request: CompanyCreateRequest,
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+
+    admin_user: str = Depends(verify_admin)
 
 ):
 
@@ -682,7 +749,9 @@ def create_company_endpoint(
 @app.get("/companies")
 def companies(
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+
+    admin_user: str = Depends(verify_admin)
 
 ):
 
@@ -731,7 +800,9 @@ def company_knowledge(
 
     company_id: int,
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+
+    admin_user: str = Depends(verify_admin)
 
 ):
 
@@ -782,7 +853,9 @@ def update_knowledge(
 
     data: KnowledgeRequest,
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+
+    admin_user: str = Depends(verify_admin)
 
 ):
 
@@ -834,7 +907,9 @@ def generate_company_api_key_endpoint(
 
     company_id: int,
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+
+    admin_user: str = Depends(verify_admin)
 
 ):
 

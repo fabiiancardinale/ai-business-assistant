@@ -1,4 +1,9 @@
-const API_URL = "http://127.0.0.1:8000";
+// Ruta relativa: el panel se sirve desde el mismo dominio que la API
+// (https://api.zelekpress.com/admin), así que no hace falta (ni conviene)
+// fijar un dominio a mano. Antes decía "http://127.0.0.1:8000", que solo
+// funciona en tu propia máquina — en producción cada visitante intentaba
+// conectarse a su propio localhost, por eso fallaba.
+const API_URL = "";
 
 
 /* =========================
