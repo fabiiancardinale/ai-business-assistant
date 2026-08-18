@@ -179,18 +179,26 @@ def root():
 # =========================================================
 # PANEL ADMINISTRATIVO
 #
-# Sirve la carpeta admin/ (index.html, style.css, app.js) como
+# Sirve frontend/admin/ (index.html, style.css, app.js) como
 # archivos estáticos en /admin. La seguridad real no está acá
 # (los archivos estáticos en sí no son sensibles): está en los
 # endpoints /companies, /companies/{id}/knowledge, etc., que
 # exigen usuario y contraseña (verify_admin) antes de devolver
 # o modificar cualquier dato. Aunque alguien abra /admin, no va
 # a poder ver ni cambiar nada sin esas credenciales.
+#
+# La ruta se calcula a partir de este mismo archivo (no del
+# directorio de trabajo del proceso), así funciona sin importar
+# desde dónde arranque uvicorn/systemd:
+# main.py está en backend/, así que subimos un nivel al raíz
+# del proyecto y bajamos a frontend/admin.
 # =========================================================
+
+ADMIN_DIR = Path(__file__).resolve().parent.parent / "frontend" / "admin"
 
 app.mount(
     "/admin",
-    StaticFiles(directory="admin", html=True),
+    StaticFiles(directory=str(ADMIN_DIR), html=True),
     name="admin"
 )
 
