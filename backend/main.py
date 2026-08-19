@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Depends, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -26,7 +27,7 @@ from services.company_service import (
     generate_company_api_key
 )
 
-from services.ai_service import generate_response
+from services.ai_service import generate_response, stream_response
 
 
 # =========================================================
@@ -49,6 +50,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Sin esto, el navegador recibe el header X-Conversation-Id en la
+    # respuesta pero el JavaScript del widget no puede leerlo (por
+    # default el fetch API solo expone un puñado de headers "seguros").
+    expose_headers=["X-Conversation-Id"],
 )
 
 
@@ -350,10 +355,7 @@ NUEVA PREGUNTA DEL CLIENTE:
     # 7. IA
     # =====================================================
 
-    response = generate_response(
-        prompt,
-        company.knowledge
-    )
+    response = generate_response(prompt)
 
 
     # =====================================================
@@ -578,51 +580,66 @@ PREGUNTA DEL CLIENTE:
 
 
     # =====================================================
-    # 8. GENERAR RESPUESTA
+    # 8. GENERAR Y ENVIAR RESPUESTA EN STREAM
+    #
+    # En vez de esperar la respuesta completa de Ollama (que
+    # puede tardar bastante), vamos entregando el texto al
+    # widget a medida que se genera, así el usuario ve la
+    # respuesta apareciendo en tiempo real.
+    #
+    # El conversation_id va en un header (X-Conversation-Id)
+    # porque el cuerpo de la respuesta ya no es JSON: es texto
+    # plano que se va transmitiendo de a pedazos.
     # =====================================================
 
-    response = generate_response(
+    def event_generator():
 
-        prompt,
+        full_response = ""
 
-        company.knowledge
+        for piece in stream_response(prompt):
+
+            full_response += piece
+
+            yield piece
+
+
+        # =================================================
+        # GUARDAR RESPUESTA COMPLETA
+        #
+        # IMPORTANTE: no podemos reutilizar `db` acá. Esa sesión
+        # se cierra apenas la función public_chat() retorna (es
+        # decir, apenas se crea el StreamingResponse), y esta
+        # función generadora sigue corriendo DESPUÉS de eso,
+        # mientras Ollama todavía está generando texto. Por eso
+        # abrimos una sesión nueva, propia de este generador.
+        # =================================================
+
+        with Session(engine) as fresh_db:
+
+            add_message(
+
+                db=fresh_db,
+
+                conversation_id=conversation_id,
+
+                role="assistant",
+
+                content=full_response
+
+            )
+
+
+    return StreamingResponse(
+
+        event_generator(),
+
+        media_type="text/plain; charset=utf-8",
+
+        headers={
+            "X-Conversation-Id": str(conversation_id)
+        }
 
     )
-
-
-    # =====================================================
-    # 9. GUARDAR RESPUESTA
-    # =====================================================
-
-    add_message(
-
-        db=db,
-
-        conversation_id=conversation_id,
-
-        role="assistant",
-
-        content=response
-
-    )
-
-
-    # =====================================================
-    # 10. RESPONDER
-    # =====================================================
-
-    return {
-
-        "conversation_id":
-            conversation_id,
-
-        "company":
-            company.name,
-
-        "response":
-            response
-
-    }
 
 
 # =========================================================
