@@ -36,9 +36,17 @@ const botName =
     currentScript.getAttribute("data-bot-name") ||
     "Asistente IA";
 
-const color =
+// Estos dos son los valores por defecto / de respaldo. Antes de
+// construir el widget, se intenta pedir la configuración real de
+// la empresa (color e ícono elegidos desde el panel admin) al
+// endpoint /api/widget/config. Si esa llamada falla por algún
+// motivo (sin conexión, API key vieja, etc.), el widget igual se
+// arma con estos valores para no quedar roto.
+let color =
     currentScript.getAttribute("data-color") ||
     "#111827";
+
+let icon = "💬";
 
 
     console.log(
@@ -134,14 +142,71 @@ const color =
     }
 
 
-    loadCSS();
+    // =====================================================
+    // OBTENER CONFIGURACIÓN DE LA EMPRESA (color, ícono)
+    //
+    // Así el color y el ícono se pueden cambiar desde el panel
+    // admin sin tener que tocar el <script> instalado en el
+    // sitio del cliente.
+    // =====================================================
+
+    async function loadRemoteConfig() {
+
+        try {
+
+            const response =
+                await fetch(
+                    apiUrl + "/api/widget/config",
+                    {
+                        headers: {
+                            "X-API-Key": apiKey
+                        }
+                    }
+                );
+
+            if (!response.ok) {
+                return;
+            }
+
+            const config =
+                await response.json();
+
+            if (config.primary_color) {
+                color = config.primary_color;
+            }
+
+            if (config.icon) {
+                icon = config.icon;
+            }
+
+        } catch (error) {
+
+            console.warn(
+                "AI Business Assistant: no se pudo obtener la configuración remota, usando valores por defecto.",
+                error
+            );
+
+        }
+
+    }
 
 
     // =====================================================
-    // HTML DEL WIDGET
+    // INICIAR WIDGET
     // =====================================================
 
-    container.innerHTML = `
+    async function initWidget() {
+
+        await loadRemoteConfig();
+
+        loadCSS();
+
+
+        // =================================================
+        // HTML DEL WIDGET
+        // =================================================
+
+        container.innerHTML = `
 
         <div class="aiba-widget">
 
@@ -152,7 +217,7 @@ const color =
                 style="background-color: ${color};"
                 aria-label="Abrir asistente"
             >
-                💬
+                ${icon}
             </button>
 
 
@@ -689,12 +754,17 @@ const color =
     );
 
 
-    // =====================================================
-    // FINAL
-    // =====================================================
+        // =================================================
+        // FINAL
+        // =================================================
 
-    console.log(
-        "AI Business Assistant: widget cargado correctamente ✅"
-    );
+        console.log(
+            "AI Business Assistant: widget cargado correctamente ✅"
+        );
+
+    }
+
+
+    initWidget();
 
 })();

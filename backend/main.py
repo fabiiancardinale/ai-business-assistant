@@ -24,6 +24,7 @@ from services.company_service import (
     get_companies,
     get_company_by_api_key,
     update_company_knowledge,
+    update_company_appearance,
     generate_company_api_key
 )
 
@@ -150,6 +151,13 @@ class CompanyCreateRequest(BaseModel):
 class KnowledgeRequest(BaseModel):
 
     knowledge: str
+
+
+class AppearanceRequest(BaseModel):
+
+    primary_color: str | None = None
+
+    icon: str | None = None
 
 
 # =========================================================
@@ -743,7 +751,10 @@ def widget_config(
             f"Hola 👋 Soy el asistente virtual de {company.name}. ¿En qué podemos ayudarte?",
 
         "primary_color":
-            "#2563eb"
+            company.primary_color or "#111827",
+
+        "icon":
+            company.icon or "💬"
 
     }
 
@@ -894,7 +905,13 @@ def company_knowledge(
             company.name,
 
         "knowledge":
-            company.knowledge or ""
+            company.knowledge or "",
+
+        "primary_color":
+            company.primary_color or "#111827",
+
+        "icon":
+            company.icon or "💬"
 
     }
 
@@ -950,6 +967,71 @@ def update_knowledge(
 
         "knowledge":
             company.knowledge
+
+    }
+
+
+# =========================================================
+# ACTUALIZAR APARIENCIA DEL WIDGET
+#
+# Permite cambiar el color principal y el ícono del botón
+# flotante del widget desde el panel de administración, sin
+# tener que tocar el <script> instalado en el sitio del
+# cliente.
+# =========================================================
+
+@app.put(
+    "/companies/{company_id}/appearance"
+)
+def update_appearance(
+
+    company_id: int,
+
+    data: AppearanceRequest,
+
+    db: Session = Depends(get_db),
+
+    admin_user: str = Depends(verify_admin)
+
+):
+
+    company = update_company_appearance(
+
+        db=db,
+
+        company_id=company_id,
+
+        primary_color=data.primary_color,
+
+        icon=data.icon
+
+    )
+
+
+    if not company:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Empresa no encontrada"
+
+        )
+
+
+    return {
+
+        "id":
+            company.id,
+
+        "name":
+            company.name,
+
+        "primary_color":
+            company.primary_color,
+
+        "icon":
+            company.icon
 
     }
 

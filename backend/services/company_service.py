@@ -126,6 +126,37 @@ def update_company_knowledge(
 
 
 # =========================================================
+# ACTUALIZAR APARIENCIA DEL WIDGET
+# =========================================================
+
+def update_company_appearance(
+    db: Session,
+    company_id: int,
+    primary_color: str | None = None,
+    icon: str | None = None
+):
+
+    company = get_company(
+        db=db,
+        company_id=company_id
+    )
+
+    if not company:
+        return None
+
+    if primary_color:
+        company.primary_color = primary_color
+
+    if icon:
+        company.icon = icon
+
+    db.commit()
+    db.refresh(company)
+
+    return company
+
+
+# =========================================================
 # GENERAR API KEY PARA EMPRESA EXISTENTE
 # =========================================================
 

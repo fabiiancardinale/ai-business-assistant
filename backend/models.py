@@ -46,6 +46,22 @@ class Company(Base):
         index=True
     )
 
+    # Color principal del widget (botón, header, burbujas del
+    # usuario). Se guarda como código hexadecimal, ej: "#111827".
+    primary_color = Column(
+        String(20),
+        nullable=True,
+        default="#111827"
+    )
+
+    # Ícono del botón flotante del widget. Por ahora es un emoji
+    # simple (ej: "💬", "🤖"), no una imagen.
+    icon = Column(
+        String(10),
+        nullable=True,
+        default="💬"
+    )
+
     created_at = Column(
         DateTime,
         default=datetime.utcnow

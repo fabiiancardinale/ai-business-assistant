@@ -98,6 +98,36 @@ const backToCompanies =
     );
 
 
+/* =========================
+   APARIENCIA DEL WIDGET
+========================= */
+
+const companyColor =
+    document.getElementById(
+        "companyColor"
+    );
+
+const companyIcon =
+    document.getElementById(
+        "companyIcon"
+    );
+
+const saveAppearance =
+    document.getElementById(
+        "saveAppearance"
+    );
+
+const appearanceStatus =
+    document.getElementById(
+        "appearanceStatus"
+    );
+
+const appearancePreviewButton =
+    document.getElementById(
+        "appearancePreviewButton"
+    );
+
+
 let selectedCompanyId = null;
 
 
@@ -535,6 +565,18 @@ async function openCompany(
 
         saveStatus.textContent =
             "";
+
+
+        companyColor.value =
+            data.primary_color || "#111827";
+
+        companyIcon.value =
+            data.icon || "💬";
+
+        appearanceStatus.textContent =
+            "";
+
+        updateAppearancePreview();
 
 
         sections.forEach(section => {
@@ -995,6 +1037,175 @@ if (saveKnowledge) {
             } finally {
 
                 saveKnowledge.disabled =
+                    false;
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =========================
+   VISTA PREVIA EN VIVO
+========================= */
+
+function updateAppearancePreview() {
+
+    if (!appearancePreviewButton) {
+        return;
+    }
+
+    appearancePreviewButton.style.background =
+        companyColor.value || "#111827";
+
+    appearancePreviewButton.textContent =
+        companyIcon.value.trim() || "💬";
+
+}
+
+
+if (companyColor) {
+
+    companyColor.addEventListener(
+        "input",
+        updateAppearancePreview
+    );
+
+}
+
+
+if (companyIcon) {
+
+    companyIcon.addEventListener(
+        "input",
+        updateAppearancePreview
+    );
+
+}
+
+
+/* =========================
+   GUARDAR APARIENCIA
+========================= */
+
+if (saveAppearance) {
+
+    saveAppearance.addEventListener(
+        "click",
+        async () => {
+
+            if (!selectedCompanyId) {
+
+                alert(
+                    "No hay ninguna empresa seleccionada."
+                );
+
+                return;
+
+            }
+
+
+            saveAppearance.disabled =
+                true;
+
+
+            appearanceStatus.textContent =
+                "Guardando...";
+
+
+            appearanceStatus.style.color =
+                "#6b7280";
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        `${API_URL}/companies/${selectedCompanyId}/appearance`,
+                        {
+                            method: "PUT",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body:
+                                JSON.stringify({
+
+                                    primary_color:
+                                        companyColor.value,
+
+                                    icon:
+                                        companyIcon.value.trim() ||
+                                        "💬"
+
+                                })
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.detail ||
+                        data.error ||
+                        "No se pudo guardar"
+                    );
+
+                }
+
+
+                appearanceStatus.textContent =
+                    "✓ Guardado correctamente";
+
+
+                appearanceStatus.style.color =
+                    "#16a34a";
+
+
+                setTimeout(
+                    () => {
+
+                        appearanceStatus.textContent =
+                            "";
+
+                    },
+                    3000
+                );
+
+
+            } catch (error) {
+
+                console.error(
+                    "Error guardando apariencia:",
+                    error
+                );
+
+
+                appearanceStatus.textContent =
+                    "✕ Error al guardar";
+
+
+                appearanceStatus.style.color =
+                    "#dc2626";
+
+
+                alert(
+                    "Error al guardar: " +
+                    error.message
+                );
+
+
+            } finally {
+
+                saveAppearance.disabled =
                     false;
 
             }

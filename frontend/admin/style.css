@@ -778,3 +778,120 @@ form input {
 
     color: #16a34a;
 }
+
+
+/* =========================
+   APARIENCIA DEL WIDGET
+========================= */
+
+.appearance-row {
+    display: flex;
+
+    align-items: flex-end;
+
+    gap: 30px;
+
+    flex-wrap: wrap;
+
+    margin-bottom: 8px;
+}
+
+.appearance-label {
+    display: block;
+
+    font-size: 13px;
+
+    font-weight: 600;
+}
+
+.appearance-label input[type="color"] {
+    display: block;
+
+    margin-top: 8px;
+
+    width: 70px;
+
+    height: 42px;
+
+    padding: 3px;
+
+    border: 1px solid #d1d5db;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    background: white;
+}
+
+.appearance-label input[type="text"] {
+    display: block;
+
+    margin-top: 8px;
+
+    width: 90px;
+
+    padding: 11px;
+
+    border: 1px solid #d1d5db;
+
+    border-radius: 8px;
+
+    outline: none;
+
+    font-size: 18px;
+
+    text-align: center;
+}
+
+.appearance-label input[type="text"]:focus,
+.appearance-label input[type="color"]:focus {
+    border-color: #111827;
+}
+
+.appearance-preview {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    color: #374151;
+}
+
+.preview-button {
+    width: 50px;
+
+    height: 50px;
+
+    border: none;
+
+    border-radius: 50%;
+
+    background: #111827;
+
+    color: white;
+
+    font-size: 20px;
+
+    cursor: default;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .2);
+}
+
+
+#appearanceStatus {
+    font-size: 13px;
+
+    color: #16a34a;
+}
