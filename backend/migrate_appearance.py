@@ -57,7 +57,7 @@ if "icon" not in columns:
     cursor.execute(
         """
         ALTER TABLE companies
-        ADD COLUMN icon VARCHAR(10) DEFAULT '💬'
+        ADD COLUMN icon VARCHAR(255) DEFAULT '💬'
         """
     )
 
@@ -71,6 +71,32 @@ else:
 
     print(
         "✓ La columna icon ya existe."
+    )
+
+
+if "icon_has_background" not in columns:
+
+    print(
+        "Agregando columna icon_has_background..."
+    )
+
+    cursor.execute(
+        """
+        ALTER TABLE companies
+        ADD COLUMN icon_has_background BOOLEAN DEFAULT 1
+        """
+    )
+
+    connection.commit()
+
+    print(
+        "✓ Columna icon_has_background agregada correctamente."
+    )
+
+else:
+
+    print(
+        "✓ La columna icon_has_background ya existe."
     )
 
 
@@ -91,6 +117,14 @@ cursor.execute(
     UPDATE companies
     SET icon = '💬'
     WHERE icon IS NULL
+    """
+)
+
+cursor.execute(
+    """
+    UPDATE companies
+    SET icon_has_background = 1
+    WHERE icon_has_background IS NULL
     """
 )
 

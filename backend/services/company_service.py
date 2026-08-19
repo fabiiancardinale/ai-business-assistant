@@ -133,7 +133,8 @@ def update_company_appearance(
     db: Session,
     company_id: int,
     primary_color: str | None = None,
-    icon: str | None = None
+    icon: str | None = None,
+    icon_has_background: bool | None = None
 ):
 
     company = get_company(
@@ -149,6 +150,14 @@ def update_company_appearance(
 
     if icon:
         company.icon = icon
+
+    # OJO: acá sí hay que comparar con "is not None", no usar
+    # "if icon_has_background" a secas — False es un valor
+    # válido (significa "sin fondo") y en Python False es
+    # "falsy", así que "if icon_has_background:" nunca dejaría
+    # guardar la opción de sacar el fondo.
+    if icon_has_background is not None:
+        company.icon_has_background = icon_has_background
 
     db.commit()
     db.refresh(company)

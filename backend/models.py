@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean
 from datetime import datetime
 
 from database.database import Base
@@ -54,12 +54,24 @@ class Company(Base):
         default="#111827"
     )
 
-    # Ícono del botón flotante del widget. Por ahora es un emoji
-    # simple (ej: "💬", "🤖"), no una imagen.
+    # Ícono del botón flotante del widget. Puede ser un emoji
+    # (ej: "💬", "🤖") o la URL de una imagen subida desde el
+    # admin (ej: "/uploads/icons/company_3.png"), por eso el
+    # campo es más largo que un emoji suelto.
     icon = Column(
-        String(10),
+        String(255),
         nullable=True,
         default="💬"
+    )
+
+    # Si es False, el botón flotante no lleva color de fondo
+    # detrás del ícono (útil cuando el ícono es una imagen/logo
+    # que ya tiene su propio diseño y no necesita el círculo de
+    # color detrás). Por defecto True (con fondo de color).
+    icon_has_background = Column(
+        Boolean,
+        nullable=True,
+        default=True
     )
 
     created_at = Column(

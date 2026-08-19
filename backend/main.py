@@ -159,6 +159,8 @@ class AppearanceRequest(BaseModel):
 
     icon: str | None = None
 
+    icon_has_background: bool | None = None
+
 
 # =========================================================
 # CARGAR KNOWLEDGE ANTIGUO
@@ -787,7 +789,12 @@ def widget_config(
             company.primary_color or "#111827",
 
         "icon":
-            company.icon or "💬"
+            company.icon or "💬",
+
+        "icon_has_background":
+            company.icon_has_background
+            if company.icon_has_background is not None
+            else True
 
     }
 
@@ -940,11 +947,19 @@ def company_knowledge(
         "knowledge":
             company.knowledge or "",
 
+        "api_key":
+            company.api_key,
+
         "primary_color":
             company.primary_color or "#111827",
 
         "icon":
-            company.icon or "💬"
+            company.icon or "💬",
+
+        "icon_has_background":
+            company.icon_has_background
+            if company.icon_has_background is not None
+            else True
 
     }
 
@@ -1036,7 +1051,9 @@ def update_appearance(
 
         primary_color=data.primary_color,
 
-        icon=data.icon
+        icon=data.icon,
+
+        icon_has_background=data.icon_has_background
 
     )
 
@@ -1064,7 +1081,12 @@ def update_appearance(
             company.primary_color,
 
         "icon":
-            company.icon
+            company.icon,
+
+        "icon_has_background":
+            company.icon_has_background
+            if company.icon_has_background is not None
+            else True
 
     }
 

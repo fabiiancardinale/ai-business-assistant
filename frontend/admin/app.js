@@ -99,6 +99,113 @@ const backToCompanies =
 
 
 /* =========================
+   CÓDIGO DE INSTALACIÓN
+========================= */
+
+const installSnippet =
+    document.getElementById(
+        "installSnippet"
+    );
+
+const copySnippet =
+    document.getElementById(
+        "copySnippet"
+    );
+
+const copySnippetStatus =
+    document.getElementById(
+        "copySnippetStatus"
+    );
+
+// Dominio donde vive el widget.js que se le instala a los
+// clientes. Es el mismo para todas las empresas — lo único
+// que cambia por empresa es la API key.
+const WIDGET_SCRIPT_URL =
+    "https://widget.zelekpress.com/widget.js";
+
+
+function buildInstallSnippet(company) {
+
+    const apiKey =
+        company.api_key || "TU_API_KEY";
+
+    const color =
+        company.primary_color || "#111827";
+
+    return (
+        `<script\n` +
+        `    src="${WIDGET_SCRIPT_URL}"\n` +
+        `    data-api-key="${apiKey}"\n` +
+        `    data-bot-name="Asistente ${company.name}"\n` +
+        `    data-color="${color}"\n` +
+        `></script>`
+    );
+
+}
+
+
+function renderInstallSnippet(company) {
+
+    if (!installSnippet) {
+        return;
+    }
+
+    installSnippet.textContent =
+        buildInstallSnippet(company);
+
+}
+
+
+if (copySnippet) {
+
+    copySnippet.addEventListener(
+        "click",
+        async () => {
+
+            try {
+
+                await navigator.clipboard.writeText(
+                    installSnippet.textContent
+                );
+
+                copySnippetStatus.textContent =
+                    "✓ Copiado";
+
+                copySnippetStatus.style.color =
+                    "#16a34a";
+
+            } catch (error) {
+
+                console.error(
+                    "Error copiando código:",
+                    error
+                );
+
+                copySnippetStatus.textContent =
+                    "✕ No se pudo copiar, seleccioná el texto a mano";
+
+                copySnippetStatus.style.color =
+                    "#dc2626";
+
+            }
+
+            setTimeout(
+                () => {
+
+                    copySnippetStatus.textContent =
+                        "";
+
+                },
+                3000
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================
    APARIENCIA DEL WIDGET
 ========================= */
 
@@ -140,6 +247,11 @@ const uploadIconButton =
 const uploadIconStatus =
     document.getElementById(
         "uploadIconStatus"
+    );
+
+const companyIconBackground =
+    document.getElementById(
+        "companyIconBackground"
     );
 
 
@@ -579,6 +691,11 @@ async function openCompany(
             data.name;
 
 
+        renderInstallSnippet(
+            data
+        );
+
+
         companyKnowledge.value =
             data.knowledge || "";
 
@@ -589,6 +706,10 @@ async function openCompany(
 
         companyColor.value =
             data.primary_color || "#111827";
+
+
+        companyIconBackground.checked =
+            data.icon_has_background !== false;
 
 
         const iconIsImage =
@@ -875,8 +996,13 @@ companyForm.addEventListener(
             await loadCompanies();
 
 
-            alert(
-                "Empresa creada correctamente."
+            // En vez de un simple aviso, se abre directo el
+            // detalle de la empresa recién creada: ahí ya está
+            // listo el código de instalación (con su API key)
+            // para copiar y pasarle al cliente.
+
+            await openCompany(
+                data.id
             );
 
 
@@ -1105,8 +1231,24 @@ function updateAppearancePreview() {
         return;
     }
 
+
+    // El toggle de "sin fondo" solo tiene sentido con una imagen
+    // subida (un emoji sin fondo de color queda invisible como
+    // botón), así que ese caso siempre lleva color de fondo.
+
+    const showBackground =
+        !currentIconImageUrl ||
+        companyIconBackground.checked;
+
     appearancePreviewButton.style.background =
-        companyColor.value || "#111827";
+        showBackground
+            ? (companyColor.value || "#111827")
+            : "transparent";
+
+    appearancePreviewButton.style.boxShadow =
+        showBackground
+            ? ""
+            : "none";
 
 
     if (currentIconImageUrl) {
@@ -1128,6 +1270,16 @@ if (companyColor) {
 
     companyColor.addEventListener(
         "input",
+        updateAppearancePreview
+    );
+
+}
+
+
+if (companyIconBackground) {
+
+    companyIconBackground.addEventListener(
+        "change",
         updateAppearancePreview
     );
 
@@ -1358,7 +1510,10 @@ if (saveAppearance) {
 
                                     icon:
                                         companyIcon.value.trim() ||
-                                        null
+                                        null,
+
+                                    icon_has_background:
+                                        companyIconBackground.checked
 
                                 })
                         }

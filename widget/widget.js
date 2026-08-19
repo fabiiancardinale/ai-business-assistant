@@ -48,6 +48,11 @@ let color =
 
 let icon = "💬";
 
+// Si es false, el botón no lleva color de fondo detrás del ícono
+// (pensado para cuando el ícono es una imagen/logo que ya tiene
+// su propio diseño). Por defecto true.
+let iconHasBackground = true;
+
 
     console.log(
         "AI Business Assistant: configuración cargada",
@@ -179,6 +184,10 @@ let icon = "💬";
                 icon = config.icon;
             }
 
+            if (config.icon_has_background === false) {
+                iconHasBackground = false;
+            }
+
         } catch (error) {
 
             console.warn(
@@ -227,6 +236,16 @@ let icon = "💬";
                 : icon;
 
 
+        // El toggle de "sin fondo" solo se aplica cuando el ícono
+        // es una imagen — un emoji sin fondo de color queda
+        // prácticamente invisible como botón.
+
+        const buttonStyle =
+            (iconIsImage && !iconHasBackground)
+                ? "background-color: transparent; box-shadow: none;"
+                : `background-color: ${color};`;
+
+
         // =================================================
         // HTML DEL WIDGET
         // =================================================
@@ -239,7 +258,7 @@ let icon = "💬";
                 type="button"
                 class="aiba-button"
                 id="aiba-open"
-                style="background-color: ${color};"
+                style="${buttonStyle}"
                 aria-label="Abrir asistente"
             >
                 ${iconHtml}

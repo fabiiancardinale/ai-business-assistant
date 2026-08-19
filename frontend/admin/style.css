@@ -906,6 +906,58 @@ form input {
     border-radius: 50%;
 }
 
+.install-snippet {
+    background: #111827;
+
+    color: #e5e7eb;
+
+    padding: 16px;
+
+    border-radius: 10px;
+
+    font-size: 12.5px;
+
+    line-height: 1.6;
+
+    overflow-x: auto;
+
+    white-space: pre;
+
+    font-family: "Courier New", monospace;
+}
+
+#copySnippetStatus {
+    font-size: 13px;
+
+    color: #16a34a;
+}
+
+.appearance-checkbox {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 9px;
+
+    margin-top: 18px;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    color: #374151;
+
+    cursor: pointer;
+
+    max-width: 480px;
+}
+
+.appearance-checkbox input {
+    margin-top: 2px;
+
+    cursor: pointer;
+}
+
 .appearance-divider {
     margin: 20px 0 14px;
 
