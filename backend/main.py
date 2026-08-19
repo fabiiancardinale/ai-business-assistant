@@ -345,6 +345,12 @@ REGLAS IMPORTANTES:
   completa antes que una larga que se pueda cortar a la
   mitad. Si el tema es muy amplio, da lo esencial y ofrecé
   seguir ampliando si el cliente lo pide.
+- Respondé específicamente lo que te preguntan, nada más.
+  Por ejemplo, si preguntan solo por los servicios, listá
+  solo los servicios — no agregues precios, tiempos de
+  entrega, soporte ni datos de contacto salvo que te los
+  pidan explícitamente o que sean necesarios para responder
+  la pregunta puntual.
 
 INFORMACIÓN DE LA EMPRESA:
 
@@ -584,6 +590,12 @@ REGLAS IMPORTANTES:
   completa antes que una larga que se pueda cortar a la
   mitad. Si el tema es muy amplio, da lo esencial y ofrecé
   seguir ampliando si el cliente lo pide.
+- Respondé específicamente lo que te preguntan, nada más.
+  Por ejemplo, si preguntan solo por los servicios, listá
+  solo los servicios — no agregues precios, tiempos de
+  entrega, soporte ni datos de contacto salvo que te los
+  pidan explícitamente o que sean necesarios para responder
+  la pregunta puntual.
 
 INFORMACIÓN DE LA EMPRESA:
 
