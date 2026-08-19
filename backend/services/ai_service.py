@@ -23,9 +23,12 @@ MODEL = "qwen3:1.7b"
 KEEP_ALIVE = "30m"
 
 # Máximo de tokens que genera por respuesta. Respuestas más cortas
-# terminan de generarse más rápido. 350 tokens alcanza sobra para una
-# respuesta de atención al cliente; si hace falta más, se puede subir.
-MAX_TOKENS = 350
+# terminan de generarse más rápido, pero un límite muy justo corta
+# la respuesta a mitad de palabra si el modelo se extiende. 450 da
+# más margen; junto con la regla de "sé breve" en el prompt, la
+# mayoría de las respuestas van a terminar solas antes de llegar
+# al límite.
+MAX_TOKENS = 450
 
 
 def generate_response(prompt: str) -> str:
