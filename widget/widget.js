@@ -295,6 +295,10 @@ const color =
 
     // =====================================================
     // AGREGAR MENSAJE
+    //
+    // Devuelve el elemento "bubble" creado, para que quien
+    // llama pueda seguir escribiendo texto adentro (usado por
+    // la respuesta en stream, que va llegando de a pedazos).
     // =====================================================
 
     function addMessage(
@@ -332,6 +336,9 @@ const color =
 
         messages.scrollTop =
             messages.scrollHeight;
+
+
+        return bubble;
 
     }
 
@@ -513,28 +520,36 @@ const color =
                 );
 
 
-            const data =
-                await response.json();
-
-
             removeTyping();
-
-
-            console.log(
-                "AI Business Assistant: respuesta recibida",
-                data
-            );
 
 
             // =============================================
             // ERROR API
+            //
+            // Si falla, la respuesta sigue siendo JSON normal
+            // (el backend solo hace streaming cuando todo salió
+            // bien), así que acá sí se puede leer con .json().
             // =============================================
 
             if (!response.ok) {
 
+                let detail =
+                    "Ocurrió un error al comunicarse con el asistente.";
+
+                try {
+
+                    const errorData =
+                        await response.json();
+
+                    detail =
+                        errorData.detail || detail;
+
+                } catch (parseError) {
+                    // si ni siquiera es JSON, se deja el mensaje genérico
+                }
+
                 addMessage(
-                    data.detail ||
-                    "Ocurrió un error al comunicarse con el asistente.",
+                    detail,
                     "bot"
                 );
 
@@ -544,21 +559,68 @@ const color =
 
             // =============================================
             // GUARDAR CONVERSACIÓN
+            //
+            // Ahora viaja en un header en vez de en el JSON,
+            // porque el cuerpo de la respuesta es el texto que
+            // va llegando en stream.
             // =============================================
 
-            conversationId =
-                data.conversation_id;
+            const headerConversationId =
+                response.headers.get("X-Conversation-Id");
+
+            if (headerConversationId) {
+
+                conversationId =
+                    Number(headerConversationId);
+
+            }
 
 
             // =============================================
-            // MOSTRAR RESPUESTA
+            // LEER Y MOSTRAR RESPUESTA EN STREAM
+            //
+            // Se crea una burbuja vacía y se va rellenando con
+            // cada pedazo de texto que llega, en vez de esperar
+            // a que la respuesta esté completa.
             // =============================================
 
-            addMessage(
-                data.response ||
-                "No recibí una respuesta.",
-                "bot"
-            );
+            const bubble =
+                addMessage("", "bot");
+
+            const reader =
+                response.body.getReader();
+
+            const decoder =
+                new TextDecoder("utf-8");
+
+            let fullText = "";
+
+            while (true) {
+
+                const { value, done } =
+                    await reader.read();
+
+                if (done) {
+                    break;
+                }
+
+                fullText +=
+                    decoder.decode(value, { stream: true });
+
+                bubble.textContent =
+                    fullText;
+
+                messages.scrollTop =
+                    messages.scrollHeight;
+
+            }
+
+            if (!fullText) {
+
+                bubble.textContent =
+                    "No recibí una respuesta.";
+
+            }
 
         }
 
