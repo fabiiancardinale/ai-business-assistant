@@ -127,8 +127,28 @@ const appearancePreviewButton =
         "appearancePreviewButton"
     );
 
+const companyIconFile =
+    document.getElementById(
+        "companyIconFile"
+    );
+
+const uploadIconButton =
+    document.getElementById(
+        "uploadIconButton"
+    );
+
+const uploadIconStatus =
+    document.getElementById(
+        "uploadIconStatus"
+    );
+
 
 let selectedCompanyId = null;
+
+// Si el ícono actual de la empresa es una imagen subida (en vez de
+// un emoji), guardamos acá su URL para poder mostrarla en la vista
+// previa y no perderla al guardar el color.
+let currentIconImageUrl = null;
 
 
 /* =========================
@@ -570,10 +590,38 @@ async function openCompany(
         companyColor.value =
             data.primary_color || "#111827";
 
-        companyIcon.value =
-            data.icon || "💬";
+
+        const iconIsImage =
+            !!data.icon &&
+            (
+                data.icon.startsWith("/") ||
+                data.icon.startsWith("http")
+            );
+
+
+        if (iconIsImage) {
+
+            currentIconImageUrl =
+                data.icon;
+
+            companyIcon.value =
+                "";
+
+        } else {
+
+            currentIconImageUrl =
+                null;
+
+            companyIcon.value =
+                data.icon || "💬";
+
+        }
+
 
         appearanceStatus.textContent =
+            "";
+
+        uploadIconStatus.textContent =
             "";
 
         updateAppearancePreview();
@@ -1060,8 +1108,18 @@ function updateAppearancePreview() {
     appearancePreviewButton.style.background =
         companyColor.value || "#111827";
 
-    appearancePreviewButton.textContent =
-        companyIcon.value.trim() || "💬";
+
+    if (currentIconImageUrl) {
+
+        appearancePreviewButton.innerHTML =
+            `<img src="${currentIconImageUrl}" alt="ícono">`;
+
+    } else {
+
+        appearancePreviewButton.textContent =
+            companyIcon.value.trim() || "💬";
+
+    }
 
 }
 
@@ -1080,7 +1138,161 @@ if (companyIcon) {
 
     companyIcon.addEventListener(
         "input",
-        updateAppearancePreview
+        () => {
+
+            // Si el usuario escribe un emoji a mano, eso reemplaza
+            // a cualquier imagen subida antes en la vista previa
+            // (el reemplazo real en el servidor recién ocurre al
+            // guardar).
+
+            currentIconImageUrl =
+                null;
+
+            updateAppearancePreview();
+
+        }
+    );
+
+}
+
+
+/* =========================
+   SUBIR ÍCONO (IMAGEN)
+========================= */
+
+if (uploadIconButton) {
+
+    uploadIconButton.addEventListener(
+        "click",
+        async () => {
+
+            if (!selectedCompanyId) {
+
+                alert(
+                    "No hay ninguna empresa seleccionada."
+                );
+
+                return;
+
+            }
+
+
+            const file =
+                companyIconFile.files[0];
+
+
+            if (!file) {
+
+                alert(
+                    "Elegí primero una imagen (PNG, JPG o WEBP)."
+                );
+
+                return;
+
+            }
+
+
+            uploadIconButton.disabled =
+                true;
+
+            uploadIconStatus.textContent =
+                "Subiendo...";
+
+            uploadIconStatus.style.color =
+                "#6b7280";
+
+
+            try {
+
+                const formData =
+                    new FormData();
+
+                formData.append(
+                    "file",
+                    file
+                );
+
+
+                const response =
+                    await fetch(
+                        `${API_URL}/companies/${selectedCompanyId}/icon`,
+                        {
+                            method: "POST",
+
+                            body: formData
+
+                            // OJO: no se pone Content-Type a mano acá.
+                            // El navegador arma el header multipart con
+                            // el "boundary" correcto solo si lo dejamos
+                            // que lo agregue él mismo.
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.detail ||
+                        data.error ||
+                        "No se pudo subir la imagen"
+                    );
+
+                }
+
+
+                currentIconImageUrl =
+                    data.icon;
+
+                companyIcon.value =
+                    "";
+
+                updateAppearancePreview();
+
+
+                uploadIconStatus.textContent =
+                    "✓ Imagen subida correctamente";
+
+                uploadIconStatus.style.color =
+                    "#16a34a";
+
+
+                setTimeout(
+                    () => {
+
+                        uploadIconStatus.textContent =
+                            "";
+
+                    },
+                    3000
+                );
+
+
+            } catch (error) {
+
+                console.error(
+                    "Error subiendo ícono:",
+                    error
+                );
+
+
+                uploadIconStatus.textContent =
+                    "✕ " + error.message;
+
+                uploadIconStatus.style.color =
+                    "#dc2626";
+
+            } finally {
+
+                uploadIconButton.disabled =
+                    false;
+
+            }
+
+        }
     );
 
 }
@@ -1132,6 +1344,12 @@ if (saveAppearance) {
                                     "application/json"
                             },
 
+                            // Si el campo de emoji está vacío, no
+                            // mandamos "icon" — así, si la empresa
+                            // tiene una imagen subida, este guardado
+                            // (que solo toca el color) no la borra.
+                            // El backend solo actualiza el ícono
+                            // cuando le llega un valor no vacío.
                             body:
                                 JSON.stringify({
 
@@ -1140,7 +1358,7 @@ if (saveAppearance) {
 
                                     icon:
                                         companyIcon.value.trim() ||
-                                        "💬"
+                                        null
 
                                 })
                         }

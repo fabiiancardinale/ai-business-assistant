@@ -203,6 +203,31 @@ let icon = "💬";
 
 
         // =================================================
+        // ÍCONO: EMOJI O IMAGEN
+        //
+        // Si el ícono configurado es una imagen subida desde el
+        // admin (empieza con "/" o "http"), se muestra como <img>.
+        // Si no, se trata como un emoji/texto normal. La URL de
+        // la imagen viene relativa al dominio del widget (ej:
+        // "/uploads/icons/company_3.png"), no al dominio del sitio
+        // donde está instalado, por eso se arma con "apiUrl".
+        // =================================================
+
+        const iconIsImage =
+            icon.startsWith("/") ||
+            icon.startsWith("http");
+
+        const iconHtml =
+            iconIsImage
+                ? `<img src="${
+                    icon.startsWith("http")
+                        ? icon
+                        : apiUrl + icon
+                }" alt="" class="aiba-button-icon">`
+                : icon;
+
+
+        // =================================================
         // HTML DEL WIDGET
         // =================================================
 
@@ -217,7 +242,7 @@ let icon = "💬";
                 style="background-color: ${color};"
                 aria-label="Abrir asistente"
             >
-                ${icon}
+                ${iconHtml}
             </button>
 
 

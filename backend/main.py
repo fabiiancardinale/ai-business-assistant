@@ -2,7 +2,7 @@ import os
 import secrets
 from pathlib import Path
 
-from fastapi import FastAPI, Depends, Header, HTTPException, status
+from fastapi import FastAPI, Depends, Header, HTTPException, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -214,6 +214,39 @@ app.mount(
     StaticFiles(directory=str(ADMIN_DIR), html=True),
     name="admin"
 )
+
+
+# =========================================================
+# ARCHIVOS SUBIDOS (íconos del widget en PNG/JPG/WEBP)
+#
+# Carpeta pública donde se guardan los íconos que se suben
+# desde el panel admin. Se sirve en /uploads, así el widget
+# puede mostrar la imagen sin autenticación (igual que el
+# resto de los recursos públicos del widget).
+# =========================================================
+
+UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
+ICONS_DIR = UPLOADS_DIR / "icons"
+
+ICONS_DIR.mkdir(parents=True, exist_ok=True)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory=str(UPLOADS_DIR)),
+    name="uploads"
+)
+
+
+# Tipos de imagen permitidos para el ícono y su extensión de archivo
+ALLOWED_ICON_TYPES = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+}
+
+# Tamaño máximo permitido para el ícono (500 KB). Es un botón
+# chiquito, no hace falta una imagen pesada.
+MAX_ICON_SIZE = 500 * 1024
 
 
 # =========================================================
@@ -1029,6 +1062,110 @@ def update_appearance(
 
         "primary_color":
             company.primary_color,
+
+        "icon":
+            company.icon
+
+    }
+
+
+# =========================================================
+# SUBIR ÍCONO DEL WIDGET (imagen)
+#
+# Alternativa a poner un emoji: subir una imagen (PNG, JPG o
+# WEBP) que se usa como ícono del botón flotante. Se guarda en
+# uploads/icons/ y el campo "icon" de la empresa pasa a guardar
+# la URL de esa imagen (ej: "/uploads/icons/company_3.png") en
+# vez de un emoji. El widget distingue uno de otro mirando si
+# el valor empieza con "/" o "http".
+# =========================================================
+
+@app.post(
+    "/companies/{company_id}/icon"
+)
+async def upload_company_icon(
+
+    company_id: int,
+
+    file: UploadFile = File(...),
+
+    db: Session = Depends(get_db),
+
+    admin_user: str = Depends(verify_admin)
+
+):
+
+    company = get_company(
+        db=db,
+        company_id=company_id
+    )
+
+    if not company:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Empresa no encontrada"
+        )
+
+
+    # =====================================================
+    # VALIDAR TIPO DE ARCHIVO
+    # =====================================================
+
+    extension = ALLOWED_ICON_TYPES.get(
+        file.content_type
+    )
+
+    if not extension:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Formato no permitido. Usa PNG, JPG o WEBP."
+        )
+
+
+    # =====================================================
+    # VALIDAR TAMAÑO
+    # =====================================================
+
+    contents = await file.read()
+
+    if len(contents) > MAX_ICON_SIZE:
+
+        raise HTTPException(
+            status_code=400,
+            detail="La imagen es muy pesada (máximo 500 KB)."
+        )
+
+
+    # =====================================================
+    # GUARDAR ARCHIVO
+    #
+    # Se nombra con el id de la empresa, así una nueva subida
+    # reemplaza la anterior en vez de ir acumulando archivos.
+    # =====================================================
+
+    filename = f"company_{company_id}{extension}"
+
+    filepath = ICONS_DIR / filename
+
+    with open(filepath, "wb") as destination:
+        destination.write(contents)
+
+
+    icon_url = f"/uploads/icons/{filename}"
+
+    company = update_company_appearance(
+        db=db,
+        company_id=company_id,
+        icon=icon_url
+    )
+
+
+    return {
+
+        "id":
+            company.id,
 
         "icon":
             company.icon
