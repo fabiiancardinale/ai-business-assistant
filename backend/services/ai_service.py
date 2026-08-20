@@ -33,19 +33,28 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-# Llama 3.3 70B: el modelo más grande/completo que ofrece Groq sin
-# ser "enterprise". Buena calidad de respuesta, todavía barato
-# (USD 0.59 / 0.79 por millón de tokens de entrada/salida). Si en
-# algún momento se quiere priorizar costo por sobre calidad, se
-# puede cambiar a "llama-3.1-8b-instant" (mucho más barato y
-# todavía más rápido, pero respuestas más simples).
-MODEL = "llama-3.3-70b-versatile"
+# openai/gpt-oss-120b: modelo abierto de OpenAI corriendo en Groq.
+# (Antes estaba configurado "llama-3.3-70b-versatile", pero Groq lo
+# discontinuó — daba error 404 "modelo no encontrado". Este es el
+# reemplazo que recomienda Groq para uso general: buena calidad,
+# barato, USD 0.15 / 0.60 por millón de tokens entrada/salida). Si
+# en algún momento se quiere priorizar costo/velocidad por sobre
+# calidad, se puede probar "openai/gpt-oss-20b" (versión más chica).
+MODEL = "openai/gpt-oss-120b"
 
 # Máximo de tokens que genera por respuesta. Ver la nota en el
 # prompt (main.py) que le pide al modelo ser breve — entre las dos
 # cosas, la respuesta debería terminar sola antes de este límite
 # en la gran mayoría de los casos.
 MAX_TOKENS = 450
+
+# Este modelo es un modelo "de razonamiento": antes de responder
+# puede generar un razonamiento interno (que Groq separa del texto
+# final, no se mezcla con la respuesta que ve el cliente). Para un
+# chatbot de atención al cliente no hace falta razonamiento
+# profundo, así que se lo pone en "low" — responde más rápido y
+# gasta menos tokens.
+REASONING_EFFORT = "low"
 
 
 def _headers():
@@ -80,7 +89,8 @@ def generate_response(prompt: str) -> str:
                 {"role": "user", "content": prompt}
             ],
             "stream": False,
-            "max_tokens": MAX_TOKENS
+            "max_tokens": MAX_TOKENS,
+            "reasoning_effort": REASONING_EFFORT
         },
         timeout=60
     )
@@ -113,7 +123,8 @@ def stream_response(prompt: str):
                 {"role": "user", "content": prompt}
             ],
             "stream": True,
-            "max_tokens": MAX_TOKENS
+            "max_tokens": MAX_TOKENS,
+            "reasoning_effort": REASONING_EFFORT
         },
         timeout=60,
         stream=True
