@@ -1,8 +1,51 @@
 import secrets
+import hashlib
 
 from sqlalchemy.orm import Session
 
 from models import Company
+
+
+# =========================================================
+# CONTRASEÑA DEL PORTAL DE CLIENTES
+#
+# Hash simple con hashlib.pbkdf2_hmac (viene con Python, no hace
+# falta instalar nada). El resultado se guarda como "salt$hash",
+# los dos en hexadecimal, en una sola columna de texto.
+# =========================================================
+
+def hash_password(password: str) -> str:
+
+    salt = secrets.token_hex(16)
+
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        100_000
+    )
+
+    return f"{salt}${digest.hex()}"
+
+
+def verify_password(password: str, stored: str) -> bool:
+
+    if not stored or "$" not in stored:
+        return False
+
+    salt, hex_digest = stored.split("$", 1)
+
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        100_000
+    )
+
+    return secrets.compare_digest(
+        digest.hex(),
+        hex_digest
+    )
 
 
 # =========================================================
@@ -215,5 +258,86 @@ def regenerate_company_api_key(
 
     db.commit()
     db.refresh(company)
+
+    return company
+
+
+# =========================================================
+# OBTENER EMPRESA POR EMAIL
+#
+# El email es el "usuario" con el que el cliente entra a su
+# propia vista (portal).
+# =========================================================
+
+def get_company_by_email(
+    db: Session,
+    email: str
+):
+
+    return (
+        db.query(Company)
+        .filter(
+            Company.email == email
+        )
+        .first()
+    )
+
+
+# =========================================================
+# FIJAR CONTRASEÑA DE ACCESO DEL CLIENTE
+#
+# La define el admin desde su panel, para dársela al cliente
+# junto con su email.
+# =========================================================
+
+def set_company_portal_password(
+    db: Session,
+    company_id: int,
+    password: str
+):
+
+    company = get_company(
+        db=db,
+        company_id=company_id
+    )
+
+    if not company:
+        return None
+
+    company.portal_password_hash = hash_password(password)
+
+    db.commit()
+    db.refresh(company)
+
+    return company
+
+
+# =========================================================
+# VALIDAR LOGIN DEL CLIENTE
+#
+# Devuelve la empresa si el email y la contraseña son correctos,
+# o None si no (email no existe, no tiene contraseña configurada
+# todavía, o la contraseña no coincide).
+# =========================================================
+
+def verify_company_login(
+    db: Session,
+    email: str,
+    password: str
+):
+
+    company = get_company_by_email(
+        db=db,
+        email=email
+    )
+
+    if not company:
+        return None
+
+    if not company.portal_password_hash:
+        return None
+
+    if not verify_password(password, company.portal_password_hash):
+        return None
 
     return company

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Mi Asistente IA</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="portal-wrap">
+
+        <header class="portal-header">
+
+            <div class="portal-logo">AI</div>
+
+            <div>
+
+                <h1 id="portalCompanyName">
+                    Cargando...
+                </h1>
+
+                <p>
+                    Panel de tu asistente virtual
+                </p>
+
+            </div>
+
+        </header>
+
+
+        <div class="card">
+
+            <div class="card-header">
+
+                <div>
+                    <h2>Código de instalación</h2>
+
+                    <p>
+                        Pegale esto a quien administre tu sitio web,
+                        para instalar el chat.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <pre class="install-snippet"><code id="installSnippet"></code></pre>
+
+
+            <div class="actions-row">
+
+                <button
+                    id="copySnippet"
+                    type="button"
+                    class="button primary"
+                >
+                    Copiar código
+                </button>
+
+                <span id="copySnippetStatus"></span>
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-header">
+
+                <div>
+                    <h2>Información de tu negocio</h2>
+
+                    <p>
+                        Esto es lo que usa la IA para responder a tus
+                        clientes: servicios, precios, horarios, contacto.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <textarea
+                id="knowledge"
+                rows="16"
+                placeholder="Escribí acá la información de tu negocio..."
+            ></textarea>
+
+
+            <div class="actions-row">
+
+                <button
+                    id="saveKnowledge"
+                    type="button"
+                    class="button primary"
+                >
+                    Guardar información
+                </button>
+
+                <span id="saveStatus"></span>
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-header">
+
+                <div>
+                    <h2>Apariencia del chat</h2>
+
+                    <p>
+                        Elegí el color y el ícono del botón que ven
+                        tus clientes en tu sitio.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div class="appearance-row">
+
+                <label class="appearance-label">
+
+                    Color principal
+
+                    <input
+                        id="companyColor"
+                        type="color"
+                        value="#111827"
+                    >
+
+                </label>
+
+
+                <label class="appearance-label">
+
+                    Ícono del botón
+
+                    <input
+                        id="companyIcon"
+                        type="text"
+                        maxlength="4"
+                        placeholder="💬"
+                    >
+
+                </label>
+
+
+                <div class="appearance-preview">
+
+                    <span>Vista previa</span>
+
+                    <button
+                        id="appearancePreviewButton"
+                        type="button"
+                        class="preview-button"
+                    >
+                        💬
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <label class="appearance-checkbox">
+
+                <input
+                    id="companyIconBackground"
+                    type="checkbox"
+                    checked
+                >
+
+                Fondo de color detrás del ícono (desactivalo si tu
+                imagen ya tiene su propio fondo)
+
+            </label>
+
+
+            <div class="appearance-divider">
+                o subí una imagen en vez de un emoji
+            </div>
+
+
+            <div class="appearance-upload-row">
+
+                <input
+                    id="companyIconFile"
+                    type="file"
+                    accept="image/png, image/jpeg, image/webp"
+                >
+
+                <button
+                    id="uploadIconButton"
+                    type="button"
+                    class="button"
+                >
+                    Subir imagen
+                </button>
+
+                <span id="uploadIconStatus"></span>
+
+            </div>
+
+
+            <div class="actions-row">
+
+                <button
+                    id="saveAppearance"
+                    type="button"
+                    class="button primary"
+                >
+                    Guardar apariencia
+                </button>
+
+                <span id="appearanceStatus"></span>
+
+            </div>
+
+        </div>
+
+
+        <footer class="portal-footer">
+            AI Business Assistant
+        </footer>
+
+    </div>
+
+
+    <script src="app.js"></script>
+
+</body>
+
+</html>

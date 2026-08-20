@@ -74,6 +74,18 @@ class Company(Base):
         default=True
     )
 
+    # Contraseña de acceso del cliente a su propia vista (el
+    # "portal"), donde puede editar su conocimiento y apariencia
+    # sin ver las demás empresas. Nunca se guarda en texto plano:
+    # acá va el resultado de hash_password() (services/company_service.py),
+    # con el formato "salt$hash". El usuario de acceso es el email
+    # de la empresa. Si queda vacío, el cliente todavía no tiene
+    # acceso propio configurado.
+    portal_password_hash = Column(
+        String(255),
+        nullable=True
+    )
+
     created_at = Column(
         DateTime,
         default=datetime.utcnow

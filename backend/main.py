@@ -25,7 +25,9 @@ from services.company_service import (
     get_company_by_api_key,
     update_company_knowledge,
     update_company_appearance,
-    generate_company_api_key
+    generate_company_api_key,
+    set_company_portal_password,
+    verify_company_login
 )
 
 from services.ai_service import generate_response, stream_response
@@ -93,10 +95,51 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas",
-            headers={"WWW-Authenticate": "Basic"},
+            # El "realm" hace que el navegador guarde estas
+            # credenciales separadas de las del portal de clientes
+            # (login distinto), aunque las dos vivan en el mismo
+            # dominio.
+            headers={"WWW-Authenticate": 'Basic realm="admin"'},
         )
 
     return credentials.username
+
+
+# =========================================================
+# AUTENTICACIÓN DEL PORTAL DE CLIENTES (HTTP Basic Auth)
+#
+# Cada empresa entra con su propio email + contraseña (la
+# contraseña la fija el admin desde su panel). A diferencia del
+# admin, acá la dependencia devuelve la empresa autenticada
+# entera, no solo un nombre de usuario — así los endpoints "/me/..."
+# saben para qué empresa trabajar sin tener que confiar en un id
+# que venga en la URL (eso evitaría que un cliente edite los datos
+# de otra empresa con solo cambiar el número en el link).
+# =========================================================
+
+portal_security = HTTPBasic()
+
+
+def verify_portal_user(
+    credentials: HTTPBasicCredentials = Depends(portal_security),
+    db: Session = Depends(get_db)
+):
+
+    company = verify_company_login(
+        db=db,
+        email=credentials.username,
+        password=credentials.password
+    )
+
+    if not company:
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales incorrectas",
+            headers={"WWW-Authenticate": 'Basic realm="portal"'},
+        )
+
+    return company
 
 
 # =========================================================
@@ -162,6 +205,11 @@ class AppearanceRequest(BaseModel):
     icon_has_background: bool | None = None
 
 
+class PortalPasswordRequest(BaseModel):
+
+    password: str
+
+
 # =========================================================
 # CARGAR KNOWLEDGE ANTIGUO
 # =========================================================
@@ -215,6 +263,25 @@ app.mount(
     "/admin",
     StaticFiles(directory=str(ADMIN_DIR), html=True),
     name="admin"
+)
+
+
+# =========================================================
+# PORTAL DEL CLIENTE
+#
+# Sirve frontend/portal/ (la vista propia de cada empresa) en
+# /portal. Igual que con /admin, los archivos estáticos en sí no
+# son sensibles — la seguridad real está en los endpoints /me/...
+# más abajo, que exigen el email y la contraseña de esa empresa
+# puntual (verify_portal_user).
+# =========================================================
+
+PORTAL_DIR = Path(__file__).resolve().parent.parent / "frontend" / "portal"
+
+app.mount(
+    "/portal",
+    StaticFiles(directory=str(PORTAL_DIR), html=True),
+    name="portal"
 )
 
 
@@ -947,6 +1014,9 @@ def company_knowledge(
         "knowledge":
             company.knowledge or "",
 
+        "email":
+            company.email,
+
         "api_key":
             company.api_key,
 
@@ -959,7 +1029,10 @@ def company_knowledge(
         "icon_has_background":
             company.icon_has_background
             if company.icon_has_background is not None
-            else True
+            else True,
+
+        "portal_enabled":
+            bool(company.portal_password_hash)
 
     }
 
@@ -1244,4 +1317,211 @@ def generate_company_api_key_endpoint(
         "api_key":
             company.api_key
 
+    }
+
+
+# =========================================================
+# FIJAR CONTRASEÑA DE ACCESO DEL CLIENTE (admin)
+#
+# El admin usa esto para darle a una empresa acceso a su propia
+# vista (el portal, /portal). El "usuario" de ese login es el
+# email de la empresa — la contraseña la elige el admin acá y se
+# la pasa al cliente por fuera del sistema (WhatsApp, email, etc).
+# =========================================================
+
+@app.put(
+    "/companies/{company_id}/portal-password"
+)
+def set_portal_password(
+
+    company_id: int,
+
+    data: PortalPasswordRequest,
+
+    db: Session = Depends(get_db),
+
+    admin_user: str = Depends(verify_admin)
+
+):
+
+    if not data.password or len(data.password) < 6:
+
+        raise HTTPException(
+            status_code=400,
+            detail="La contraseña debe tener al menos 6 caracteres."
+        )
+
+
+    company = set_company_portal_password(
+
+        db=db,
+
+        company_id=company_id,
+
+        password=data.password
+
+    )
+
+
+    if not company:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Empresa no encontrada"
+        )
+
+
+    return {
+        "id": company.id,
+        "email": company.email,
+        "portal_enabled": True
+    }
+
+
+# =========================================================
+# PORTAL DEL CLIENTE — MIS DATOS
+#
+# A partir de acá, todos los endpoints usan verify_portal_user en
+# vez de verify_admin: la empresa se identifica por sus propias
+# credenciales (email + contraseña), no por un id en la URL. Así
+# un cliente nunca puede ver ni tocar los datos de otra empresa.
+# =========================================================
+
+@app.get("/me")
+def portal_me(
+    company=Depends(verify_portal_user)
+):
+
+    return {
+
+        "id":
+            company.id,
+
+        "name":
+            company.name,
+
+        "email":
+            company.email,
+
+        "knowledge":
+            company.knowledge or "",
+
+        "api_key":
+            company.api_key,
+
+        "primary_color":
+            company.primary_color or "#111827",
+
+        "icon":
+            company.icon or "💬",
+
+        "icon_has_background":
+            company.icon_has_background
+            if company.icon_has_background is not None
+            else True
+
+    }
+
+
+@app.put("/me/knowledge")
+def portal_update_knowledge(
+    data: KnowledgeRequest,
+    db: Session = Depends(get_db),
+    company=Depends(verify_portal_user)
+):
+
+    updated = update_company_knowledge(
+        db=db,
+        company_id=company.id,
+        knowledge=data.knowledge
+    )
+
+    return {
+        "id": updated.id,
+        "knowledge": updated.knowledge
+    }
+
+
+@app.put("/me/appearance")
+def portal_update_appearance(
+    data: AppearanceRequest,
+    db: Session = Depends(get_db),
+    company=Depends(verify_portal_user)
+):
+
+    updated = update_company_appearance(
+        db=db,
+        company_id=company.id,
+        primary_color=data.primary_color,
+        icon=data.icon,
+        icon_has_background=data.icon_has_background
+    )
+
+    return {
+
+        "id":
+            updated.id,
+
+        "primary_color":
+            updated.primary_color,
+
+        "icon":
+            updated.icon,
+
+        "icon_has_background":
+            updated.icon_has_background
+            if updated.icon_has_background is not None
+            else True
+
+    }
+
+
+@app.post("/me/icon")
+async def portal_upload_icon(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    company=Depends(verify_portal_user)
+):
+
+    extension = ALLOWED_ICON_TYPES.get(
+        file.content_type
+    )
+
+    if not extension:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Formato no permitido. Usa PNG, JPG o WEBP."
+        )
+
+
+    contents = await file.read()
+
+    if len(contents) > MAX_ICON_SIZE:
+
+        raise HTTPException(
+            status_code=400,
+            detail="La imagen es muy pesada (máximo 500 KB)."
+        )
+
+
+    filename = f"company_{company.id}{extension}"
+
+    filepath = ICONS_DIR / filename
+
+    with open(filepath, "wb") as destination:
+        destination.write(contents)
+
+
+    icon_url = f"/uploads/icons/{filename}"
+
+    updated = update_company_appearance(
+        db=db,
+        company_id=company.id,
+        icon=icon_url
+    )
+
+    return {
+        "id": updated.id,
+        "icon": updated.icon
     }

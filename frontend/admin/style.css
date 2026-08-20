@@ -906,6 +906,42 @@ form input {
     border-radius: 50%;
 }
 
+.portal-access-info {
+    font-size: 13px;
+
+    color: #374151;
+
+    margin-bottom: 16px;
+}
+
+.portal-access-info strong {
+    color: #111827;
+}
+
+.knowledge-label input[type="text"] {
+    display: block;
+
+    width: 100%;
+
+    max-width: 320px;
+
+    margin-top: 8px;
+
+    padding: 11px;
+
+    border: 1px solid #d1d5db;
+
+    border-radius: 8px;
+
+    outline: none;
+
+    font-size: 14px;
+}
+
+.knowledge-label input[type="text"]:focus {
+    border-color: #111827;
+}
+
 .install-snippet {
     background: #111827;
 

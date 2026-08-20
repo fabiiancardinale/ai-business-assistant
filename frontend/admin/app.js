@@ -99,6 +99,154 @@ const backToCompanies =
 
 
 /* =========================
+   ACCESO DEL CLIENTE
+========================= */
+
+const portalEmail =
+    document.getElementById(
+        "portalEmail"
+    );
+
+const portalPassword =
+    document.getElementById(
+        "portalPassword"
+    );
+
+const savePortalPassword =
+    document.getElementById(
+        "savePortalPassword"
+    );
+
+const portalPasswordStatus =
+    document.getElementById(
+        "portalPasswordStatus"
+    );
+
+
+if (savePortalPassword) {
+
+    savePortalPassword.addEventListener(
+        "click",
+        async () => {
+
+            if (!selectedCompanyId) {
+
+                alert(
+                    "No hay ninguna empresa seleccionada."
+                );
+
+                return;
+
+            }
+
+
+            const password =
+                portalPassword.value.trim();
+
+            if (password.length < 6) {
+
+                alert(
+                    "La contraseña debe tener al menos 6 caracteres."
+                );
+
+                return;
+
+            }
+
+
+            savePortalPassword.disabled =
+                true;
+
+            portalPasswordStatus.textContent =
+                "Guardando...";
+
+            portalPasswordStatus.style.color =
+                "#6b7280";
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        `${API_URL}/companies/${selectedCompanyId}/portal-password`,
+                        {
+                            method: "PUT",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body:
+                                JSON.stringify({
+                                    password: password
+                                })
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.detail ||
+                        "No se pudo guardar"
+                    );
+
+                }
+
+
+                portalPassword.value =
+                    "";
+
+                portalPasswordStatus.textContent =
+                    "✓ Contraseña guardada. Ya podés pasarle el acceso.";
+
+                portalPasswordStatus.style.color =
+                    "#16a34a";
+
+
+                setTimeout(
+                    () => {
+
+                        portalPasswordStatus.textContent =
+                            "";
+
+                    },
+                    4000
+                );
+
+
+            } catch (error) {
+
+                console.error(
+                    "Error guardando contraseña del portal:",
+                    error
+                );
+
+                portalPasswordStatus.textContent =
+                    "✕ " + error.message;
+
+                portalPasswordStatus.style.color =
+                    "#dc2626";
+
+            } finally {
+
+                savePortalPassword.disabled =
+                    false;
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =========================
    CÓDIGO DE INSTALACIÓN
 ========================= */
 
@@ -694,6 +842,28 @@ async function openCompany(
         renderInstallSnippet(
             data
         );
+
+
+        if (portalEmail) {
+
+            portalEmail.textContent =
+                data.email || "— (esta empresa no tiene email cargado)";
+
+        }
+
+        if (portalPassword) {
+
+            portalPassword.value =
+                "";
+
+        }
+
+        if (portalPasswordStatus) {
+
+            portalPasswordStatus.textContent =
+                "";
+
+        }
 
 
         companyKnowledge.value =
