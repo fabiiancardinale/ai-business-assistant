@@ -1,91 +1,121 @@
+import os
 import json
 import requests
 
 
-OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
-
-# qwen3:1.7b en vez de qwen3:4b: el servidor no tiene GPU, corre todo
-# en CPU (4 núcleos), y un modelo más chico genera texto bastante más
-# rápido (menos parámetros que calcular por cada token). La respuesta
-# es un poco menos elaborada, pero para responder preguntas de atención
-# al cliente con la información de la empresa alcanza de sobra.
+# =========================================================
+# GROQ EN VEZ DE OLLAMA LOCAL
 #
-# IMPORTANTE: antes de reiniciar el servicio hay que descargar el
-# modelo en la VPS una sola vez con:
+# Antes esto llamaba a Ollama corriendo en la propia VPS
+# (http://127.0.0.1:11434), que al no tener GPU generaba texto
+# lento (CPU pura). Groq corre los modelos en su propio hardware
+# especializado (LPU) y responde mucho más rápido, cobrando por
+# token usado en vez de por servidor.
 #
-#   ollama pull qwen3:1.7b
+# La API de Groq es compatible con el formato de OpenAI, por eso
+# el body usa "messages" en vez del "prompt" plano que usaba
+# Ollama.
 #
-MODEL = "qwen3:1.7b"
+# IMPORTANTE: la API key NO va escrita acá en el código. Se lee
+# de la variable de entorno GROQ_API_KEY, que hay que configurar
+# en la VPS con:
+#
+#   sudo systemctl edit ai-business-assistant.service
+#
+# Y agregar, dentro de [Service]:
+#
+#   Environment="GROQ_API_KEY=tu_api_key_de_groq"
+#
+# Después: sudo systemctl daemon-reload && sudo systemctl restart ai-business-assistant.service
+# =========================================================
 
-# Cuánto tiempo mantiene Ollama el modelo cargado en memoria entre
-# consultas. Sin esto, cada mensaje puede perder tiempo extra recargando
-# el modelo si pasó un rato desde la última consulta.
-KEEP_ALIVE = "30m"
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
-# Máximo de tokens que genera por respuesta. Respuestas más cortas
-# terminan de generarse más rápido, pero un límite muy justo corta
-# la respuesta a mitad de palabra si el modelo se extiende. 450 da
-# más margen; junto con la regla de "sé breve" en el prompt, la
-# mayoría de las respuestas van a terminar solas antes de llegar
-# al límite.
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+# Llama 3.3 70B: el modelo más grande/completo que ofrece Groq sin
+# ser "enterprise". Buena calidad de respuesta, todavía barato
+# (USD 0.59 / 0.79 por millón de tokens de entrada/salida). Si en
+# algún momento se quiere priorizar costo por sobre calidad, se
+# puede cambiar a "llama-3.1-8b-instant" (mucho más barato y
+# todavía más rápido, pero respuestas más simples).
+MODEL = "llama-3.3-70b-versatile"
+
+# Máximo de tokens que genera por respuesta. Ver la nota en el
+# prompt (main.py) que le pide al modelo ser breve — entre las dos
+# cosas, la respuesta debería terminar sola antes de este límite
+# en la gran mayoría de los casos.
 MAX_TOKENS = 450
+
+
+def _headers():
+
+    if not GROQ_API_KEY:
+
+        raise RuntimeError(
+            "Falta configurar la variable de entorno GROQ_API_KEY "
+            "en la VPS (ver systemctl edit ai-business-assistant.service)."
+        )
+
+    return {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
 
 def generate_response(prompt: str) -> str:
     """
     Envía el prompt (ya armado completo por quien llama a esta función,
-    por ejemplo main.py) a Ollama y espera la respuesta completa antes
+    por ejemplo main.py) a Groq y espera la respuesta completa antes
     de devolverla. Se usa donde no hace falta mostrar el texto apareciendo
     en tiempo real (por ejemplo, el endpoint interno /chat del panel).
-
-    IMPORTANTE: esta función ya NO arma su propio prompt con la
-    información de la empresa — antes lo hacía, y como quien llama
-    también arma un prompt con esa misma información, terminaba
-    mandándose duplicada a Ollama. Ahora se manda una sola vez.
     """
 
     response = requests.post(
-        OLLAMA_URL,
+        GROQ_URL,
+        headers=_headers(),
         json={
             "model": MODEL,
-            "prompt": prompt,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
             "stream": False,
-            "keep_alive": KEEP_ALIVE,
-            "options": {
-                "num_predict": MAX_TOKENS
-            }
+            "max_tokens": MAX_TOKENS
         },
-        timeout=180
+        timeout=60
     )
 
     response.raise_for_status()
 
     data = response.json()
 
-    return data["response"].strip()
+    return data["choices"][0]["message"]["content"].strip()
 
 
 def stream_response(prompt: str):
     """
     Igual que generate_response, pero en vez de esperar la respuesta
-    completa, va entregando (yield) el texto a medida que Ollama lo
+    completa, va entregando (yield) el texto a medida que Groq lo
     genera. Se usa en el endpoint público /api/chat para que el widget
-    muestre el texto apareciendo en tiempo real en vez de quedar 30-90
-    segundos en silencio.
+    muestre el texto apareciendo en tiempo real.
+
+    Groq entrega el stream en formato "Server-Sent Events": cada
+    línea empieza con "data: " seguido de un JSON, y termina con una
+    línea "data: [DONE]".
     """
 
     with requests.post(
-        OLLAMA_URL,
+        GROQ_URL,
+        headers=_headers(),
         json={
             "model": MODEL,
-            "prompt": prompt,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
             "stream": True,
-            "keep_alive": KEEP_ALIVE,
-            "options": {
-                "num_predict": MAX_TOKENS
-            }
+            "max_tokens": MAX_TOKENS
         },
-        timeout=180,
+        timeout=60,
         stream=True
     ) as response:
 
@@ -96,12 +126,23 @@ def stream_response(prompt: str):
             if not line:
                 continue
 
-            chunk = json.loads(line)
+            decoded = line.decode("utf-8")
 
-            piece = chunk.get("response", "")
+            if not decoded.startswith("data: "):
+                continue
 
-            if piece:
-                yield piece
+            payload = decoded[len("data: "):]
 
-            if chunk.get("done"):
+            if payload == "[DONE]":
                 break
+
+            chunk = json.loads(payload)
+
+            delta = (
+                chunk.get("choices", [{}])[0]
+                .get("delta", {})
+                .get("content", "")
+            )
+
+            if delta:
+                yield delta
