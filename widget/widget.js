@@ -53,6 +53,15 @@ let icon = "💬";
 // su propio diseño). Por defecto true.
 let iconHasBackground = true;
 
+// Distancia desde abajo (en px) a la que se ubica el botón del
+// chat. Sirve para que no quede pisado con otro botón flotante
+// que ya tenga el sitio (WhatsApp, "volver arriba", etc). Se
+// configura agregando data-offset-bottom="165" al <script>, por
+// ejemplo, para dejarlo arriba de un botón de WhatsApp.
+const offsetBottom =
+    currentScript.getAttribute("data-offset-bottom") ||
+    "25";
+
 
     console.log(
         "AI Business Assistant: configuración cargada",
@@ -252,7 +261,7 @@ let iconHasBackground = true;
 
         container.innerHTML = `
 
-        <div class="aiba-widget">
+        <div class="aiba-widget" style="--aiba-offset-bottom: ${offsetBottom}px;">
 
             <button
                 type="button"

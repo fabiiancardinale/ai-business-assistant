@@ -30,7 +30,10 @@
 
     right: 25px;
 
-    bottom: 25px;
+    /* Configurable desde el <script> con data-offset-bottom, por
+       si el sitio ya tiene otro botón flotante (WhatsApp, "volver
+       arriba") en esa misma esquina. */
+    bottom: var(--aiba-offset-bottom, 25px);
 
     width: 60px;
 
@@ -98,7 +101,8 @@
 
     right: 25px;
 
-    bottom: 95px;
+    /* Siempre 70px arriba del botón, sea cual sea su posición. */
+    bottom: calc(var(--aiba-offset-bottom, 25px) + 70px);
 
     width: 370px;
 
@@ -524,7 +528,7 @@
 
         left: 10px;
 
-        bottom: 85px;
+        bottom: calc(var(--aiba-offset-bottom, 18px) + 67px);
 
         width: auto;
 
@@ -540,7 +544,7 @@
 
         right: 18px;
 
-        bottom: 18px;
+        bottom: var(--aiba-offset-bottom, 18px);
 
     }
 
