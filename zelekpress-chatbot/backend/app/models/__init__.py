@@ -9,6 +9,8 @@ from app.models.knowledge import KnowledgeSource, KnowledgeChunk
 from app.models.lead import Lead
 from app.models.analytics import UnansweredQuestion
 from app.models.usage import Usage
+from app.models.api_key import ApiKey
+from app.models.webhook import Webhook
 from app.models.audit import AuditLog
 
 __all__ = [
@@ -16,5 +18,6 @@ __all__ = [
     "Chatbot", "ChatbotSettings", "ChatbotTheme",
     "Conversation", "Message",
     "KnowledgeSource", "KnowledgeChunk",
-    "Lead", "UnansweredQuestion", "Usage", "AuditLog",
+    "Lead", "UnansweredQuestion", "Usage",
+    "ApiKey", "Webhook", "AuditLog",
 ]

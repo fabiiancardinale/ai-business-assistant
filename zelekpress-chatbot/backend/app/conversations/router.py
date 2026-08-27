@@ -9,6 +9,7 @@ from app.core.db import get_db
 from app.core.deps import get_tenant, require_role, TenantContext
 from app.models.conversation import Conversation, Message
 from app.realtime.service import agent_reply, return_to_ai, add_message
+from app.webhooks.service import dispatch as dispatch_webhook
 
 router = APIRouter(prefix="/api/v1/conversations", tags=["conversations"])
 
@@ -105,6 +106,10 @@ def close_conversation(conv_id: int, tenant: TenantContext = Depends(require_rol
     conv = _conv(db, tenant, conv_id)
     conv.status = "closed"
     db.commit()
+    dispatch_webhook(db, conv.company_id, "conversation.closed", {
+        "conversation_id": conv.id, "conversation_token": conv.token,
+        "chatbot_id": conv.chatbot_id,
+    })
     return {"ok": True, "status": conv.status}
 
 

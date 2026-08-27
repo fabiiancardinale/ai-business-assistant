@@ -554,6 +554,146 @@ function LeadsPage() {
   );
 }
 
+/* ========================= INTEGRACIONES ========================= */
+function IntegracionesPage() {
+  const [keys, setKeys] = useState([]);
+  const [wh, setWh] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [err, setErr] = useState("");
+  const [newKey, setNewKey] = useState(null); // key completa mostrada una sola vez
+  const [kf, setKf] = useState({ name: "", read: true, write: false });
+  const [wf, setWf] = useState({ url: "", events: [] });
+
+  const loadKeys = useCallback(() => api("GET", "/api/v1/integrations/api-keys").then(setKeys).catch((e) => setErr(e.message)), []);
+  const loadWh = useCallback(() => api("GET", "/api/v1/integrations/webhooks").then((r) => { setWh(r.webhooks); setEvents(r.available_events); }).catch((e) => setErr(e.message)), []);
+  useEffect(() => { loadKeys(); loadWh(); }, [loadKeys, loadWh]);
+
+  async function createKey() {
+    if (!kf.name.trim()) return;
+    setErr("");
+    const scopes = [kf.read && "read", kf.write && "write"].filter(Boolean);
+    try {
+      const r = await api("POST", "/api/v1/integrations/api-keys", { name: kf.name.trim(), scopes });
+      setNewKey(r.key);
+      setKf({ name: "", read: true, write: false });
+      loadKeys();
+    } catch (e) { setErr(e.message); }
+  }
+  async function revokeKey(k) {
+    if (!confirm("¿Revocar la key " + k.name + "? Dejará de funcionar de inmediato.")) return;
+    try { await api("DELETE", "/api/v1/integrations/api-keys/" + k.id); loadKeys(); } catch (e) { setErr(e.message); }
+  }
+
+  function toggleWfEvent(ev) {
+    setWf((s) => ({ ...s, events: s.events.includes(ev) ? s.events.filter((e) => e !== ev) : [...s.events, ev] }));
+  }
+  async function createWh() {
+    if (!wf.url.trim()) return;
+    setErr("");
+    try {
+      await api("POST", "/api/v1/integrations/webhooks", { url: wf.url.trim(), events: wf.events });
+      setWf({ url: "", events: [] });
+      loadWh();
+    } catch (e) { setErr(e.message); }
+  }
+  async function toggleWh(w) { try { await api("PATCH", "/api/v1/integrations/webhooks/" + w.id, { active: !w.active }); loadWh(); } catch (e) { setErr(e.message); } }
+  async function delWh(w) { if (!confirm("¿Eliminar este webhook?")) return; try { await api("DELETE", "/api/v1/integrations/webhooks/" + w.id); loadWh(); } catch (e) { setErr(e.message); } }
+  async function testWh(w) { try { await api("POST", "/api/v1/integrations/webhooks/" + w.id + "/test"); setTimeout(loadWh, 1500); } catch (e) { setErr(e.message); } }
+
+  const copy = (t) => { navigator.clipboard && navigator.clipboard.writeText(t); };
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-1">Integraciones</h1>
+      <p className="text-slate-400 mb-4 text-sm">Conectá el chatbot con tus sistemas: API keys para consumir la API, y webhooks para recibir eventos en tu servidor.</p>
+      {err && <div className="text-red-300 mb-3">{err}</div>}
+
+      {newKey && (
+        <div className="bg-amber-400/10 border border-amber-400/40 rounded-xl p-4 mb-5">
+          <p className="text-amber-200 text-sm mb-2 font-semibold">Guardá esta API key ahora — no se vuelve a mostrar.</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-amber-300 text-sm break-all">{newKey}</code>
+            <Btn kind="ghost" onClick={() => copy(newKey)}>Copiar</Btn>
+            <Btn kind="ghost" onClick={() => setNewKey(null)}>Listo</Btn>
+          </div>
+        </div>
+      )}
+
+      <Card title="Nueva API key">
+        <div className="grid md:grid-cols-3 gap-3 items-end">
+          <Field label="Nombre (para reconocerla)"><input className={inputCls} value={kf.name} onChange={(e) => setKf({ ...kf, name: e.target.value })} placeholder="Integración CRM" /></Field>
+          <Field label="Permisos">
+            <div className="flex gap-4 pt-2">
+              <label className="flex items-center gap-2 text-slate-300 text-sm"><input type="checkbox" checked={kf.read} onChange={(e) => setKf({ ...kf, read: e.target.checked })} /> Lectura</label>
+              <label className="flex items-center gap-2 text-slate-300 text-sm"><input type="checkbox" checked={kf.write} onChange={(e) => setKf({ ...kf, write: e.target.checked })} /> Escritura</label>
+            </div>
+          </Field>
+          <div className="mb-3"><Btn onClick={createKey}>Generar key</Btn></div>
+        </div>
+      </Card>
+
+      <Card title="API keys">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="text-slate-400 text-left"><th className="py-2">Nombre</th><th>Prefijo</th><th>Permisos</th><th>Último uso</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+              {keys.map((k) => (
+                <tr key={k.id} className="border-t border-slate-700">
+                  <td className="py-2 text-white">{k.name}</td>
+                  <td className="text-slate-400 font-mono text-xs">{k.prefix}…</td>
+                  <td className="text-slate-300">{(k.scopes || []).join(", ")}</td>
+                  <td className="text-slate-500">{k.last_used_at ? new Date(k.last_used_at).toLocaleString() : "nunca"}</td>
+                  <td>{k.revoked ? <span className="text-xs text-red-300">revocada</span> : <span className="text-xs text-emerald-300">activa</span>}</td>
+                  <td className="text-right">{!k.revoked && <Btn kind="danger" onClick={() => revokeKey(k)}>Revocar</Btn>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!keys.length && <p className="text-slate-500 py-3">Todavía no creaste ninguna API key.</p>}
+        </div>
+      </Card>
+
+      <Card title="Nuevo webhook" sub="Recibí un POST firmado (HMAC-SHA256) cuando ocurra un evento.">
+        <Field label="URL de destino"><input className={inputCls} value={wf.url} onChange={(e) => setWf({ ...wf, url: e.target.value })} placeholder="https://tu-servidor.com/webhooks/zelekpress" /></Field>
+        <div className="flex flex-wrap gap-3 mb-3">
+          {events.map((ev) => (
+            <label key={ev} className="flex items-center gap-2 text-slate-300 text-sm bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5">
+              <input type="checkbox" checked={wf.events.includes(ev)} onChange={() => toggleWfEvent(ev)} /> {ev}
+            </label>
+          ))}
+        </div>
+        <Btn onClick={createWh}>Crear webhook</Btn>
+      </Card>
+
+      <Card title="Webhooks">
+        {wh.map((w) => (
+          <div key={w.id} className="border border-slate-700 rounded-lg p-3 mb-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-white break-all">{w.url}</p>
+                <p className="text-slate-400 text-xs mt-1">{(w.events || []).join(", ") || "sin eventos"}</p>
+                <p className="text-slate-500 text-xs mt-1">
+                  Última entrega: {w.last_delivery_at ? new Date(w.last_delivery_at).toLocaleString() : "—"}
+                  {w.last_status != null && <span className={w.last_status >= 200 && w.last_status < 300 ? " text-emerald-300" : " text-red-300"}> · HTTP {w.last_status}</span>}
+                  {w.last_error && <span className="text-red-300"> · {w.last_error}</span>}
+                </p>
+                <p className="text-slate-500 text-xs mt-1">Secret: <code className="text-slate-400">{w.secret}</code> <button className="text-amber-300 ml-1" onClick={() => copy(w.secret)}>copiar</button></p>
+              </div>
+              <div className="flex flex-col gap-2 shrink-0">
+                <Btn kind="ghost" onClick={() => testWh(w)}>Probar</Btn>
+                <Btn kind="ghost" onClick={() => toggleWh(w)}>{w.active ? "Pausar" : "Activar"}</Btn>
+                <Btn kind="danger" onClick={() => delWh(w)}>Eliminar</Btn>
+              </div>
+            </div>
+            {!w.active && <p className="text-amber-300 text-xs mt-2">Pausado — no recibe eventos.</p>}
+          </div>
+        ))}
+        {!wh.length && <p className="text-slate-500 py-2">Todavía no configuraste webhooks.</p>}
+      </Card>
+    </div>
+  );
+}
+
 /* ========================= ANALYTICS ========================= */
 function UsageCard() {
   const [u, setU] = useState(null);
@@ -767,7 +907,7 @@ function Shell({ me, companies, companyId, onSelectCompany, onRefreshCompanies, 
   const isAdmin = me.user.is_platform_admin;
   const [page, setPage] = useState(isAdmin ? "empresas" : "chatbots");
   const [botId, setBotId] = useState(null);
-  const baseNav = [["chatbots", "🤖 Chatbots"], ["conversations", "💬 Conversaciones"], ["leads", "📇 Leads"], ["analytics", "📊 Analytics"]];
+  const baseNav = [["chatbots", "🤖 Chatbots"], ["conversations", "💬 Conversaciones"], ["leads", "📇 Leads"], ["analytics", "📊 Analytics"], ["integraciones", "🔌 Integraciones"]];
   const nav = isAdmin ? [["empresas", "🏢 Empresas"], ["planes", "💳 Planes"], ...baseNav] : baseNav;
   return (
     <div className="min-h-screen flex">
@@ -822,6 +962,7 @@ function Shell({ me, companies, companyId, onSelectCompany, onRefreshCompanies, 
             {companyId && page === "conversations" && <ConversationsPage />}
             {companyId && page === "leads" && <LeadsPage />}
             {companyId && page === "analytics" && <AnalyticsPage />}
+            {companyId && page === "integraciones" && <IntegracionesPage />}
           </>
         )}
       </main>

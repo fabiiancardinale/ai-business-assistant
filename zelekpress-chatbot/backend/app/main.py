@@ -20,6 +20,8 @@ from app.conversations.router import router as conversations_router
 from app.knowledge.router import router as knowledge_router
 from app.leads.router import router as leads_router
 from app.analytics.router import router as analytics_router
+from app.integrations.router import router as integrations_router
+from app.public_api.router import router as public_api_router
 from app.realtime.ws_router import router as ws_router
 
 app = FastAPI(
@@ -85,4 +87,6 @@ app.include_router(conversations_router)
 app.include_router(knowledge_router)
 app.include_router(leads_router)
 app.include_router(analytics_router)
+app.include_router(integrations_router)
+app.include_router(public_api_router)
 app.include_router(ws_router)

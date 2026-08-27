@@ -390,6 +390,89 @@
     }, []);
     return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h1", { className: "text-2xl font-bold mb-4" }, "Leads"), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "overflow-x-auto" }, /* @__PURE__ */ React.createElement("table", { className: "w-full text-sm" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "text-slate-400 text-left" }, /* @__PURE__ */ React.createElement("th", { className: "py-2" }, "Nombre"), /* @__PURE__ */ React.createElement("th", null, "Email"), /* @__PURE__ */ React.createElement("th", null, "Tel\xE9fono"), /* @__PURE__ */ React.createElement("th", null, "Estado"), /* @__PURE__ */ React.createElement("th", null, "Fecha"))), /* @__PURE__ */ React.createElement("tbody", null, leads.map((l) => /* @__PURE__ */ React.createElement("tr", { key: l.id, className: "border-t border-slate-700" }, /* @__PURE__ */ React.createElement("td", { className: "py-2 text-white" }, l.name || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "text-slate-300" }, l.email || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "text-slate-300" }, l.phone || "\u2014"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("span", { className: "text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full" }, l.status)), /* @__PURE__ */ React.createElement("td", { className: "text-slate-500" }, l.created_at ? new Date(l.created_at).toLocaleDateString() : ""))))), !leads.length && /* @__PURE__ */ React.createElement("p", { className: "text-slate-500 py-3" }, "Sin leads todav\xEDa."))));
   }
+  function IntegracionesPage() {
+    const [keys, setKeys] = useState([]);
+    const [wh, setWh] = useState([]);
+    const [events, setEvents] = useState([]);
+    const [err, setErr] = useState("");
+    const [newKey, setNewKey] = useState(null);
+    const [kf, setKf] = useState({ name: "", read: true, write: false });
+    const [wf, setWf] = useState({ url: "", events: [] });
+    const loadKeys = useCallback(() => api("GET", "/api/v1/integrations/api-keys").then(setKeys).catch((e) => setErr(e.message)), []);
+    const loadWh = useCallback(() => api("GET", "/api/v1/integrations/webhooks").then((r) => {
+      setWh(r.webhooks);
+      setEvents(r.available_events);
+    }).catch((e) => setErr(e.message)), []);
+    useEffect(() => {
+      loadKeys();
+      loadWh();
+    }, [loadKeys, loadWh]);
+    async function createKey() {
+      if (!kf.name.trim()) return;
+      setErr("");
+      const scopes = [kf.read && "read", kf.write && "write"].filter(Boolean);
+      try {
+        const r = await api("POST", "/api/v1/integrations/api-keys", { name: kf.name.trim(), scopes });
+        setNewKey(r.key);
+        setKf({ name: "", read: true, write: false });
+        loadKeys();
+      } catch (e) {
+        setErr(e.message);
+      }
+    }
+    async function revokeKey(k) {
+      if (!confirm("\xBFRevocar la key " + k.name + "? Dejar\xE1 de funcionar de inmediato.")) return;
+      try {
+        await api("DELETE", "/api/v1/integrations/api-keys/" + k.id);
+        loadKeys();
+      } catch (e) {
+        setErr(e.message);
+      }
+    }
+    function toggleWfEvent(ev) {
+      setWf((s) => ({ ...s, events: s.events.includes(ev) ? s.events.filter((e) => e !== ev) : [...s.events, ev] }));
+    }
+    async function createWh() {
+      if (!wf.url.trim()) return;
+      setErr("");
+      try {
+        await api("POST", "/api/v1/integrations/webhooks", { url: wf.url.trim(), events: wf.events });
+        setWf({ url: "", events: [] });
+        loadWh();
+      } catch (e) {
+        setErr(e.message);
+      }
+    }
+    async function toggleWh(w) {
+      try {
+        await api("PATCH", "/api/v1/integrations/webhooks/" + w.id, { active: !w.active });
+        loadWh();
+      } catch (e) {
+        setErr(e.message);
+      }
+    }
+    async function delWh(w) {
+      if (!confirm("\xBFEliminar este webhook?")) return;
+      try {
+        await api("DELETE", "/api/v1/integrations/webhooks/" + w.id);
+        loadWh();
+      } catch (e) {
+        setErr(e.message);
+      }
+    }
+    async function testWh(w) {
+      try {
+        await api("POST", "/api/v1/integrations/webhooks/" + w.id + "/test");
+        setTimeout(loadWh, 1500);
+      } catch (e) {
+        setErr(e.message);
+      }
+    }
+    const copy = (t) => {
+      navigator.clipboard && navigator.clipboard.writeText(t);
+    };
+    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h1", { className: "text-2xl font-bold mb-1" }, "Integraciones"), /* @__PURE__ */ React.createElement("p", { className: "text-slate-400 mb-4 text-sm" }, "Conect\xE1 el chatbot con tus sistemas: API keys para consumir la API, y webhooks para recibir eventos en tu servidor."), err && /* @__PURE__ */ React.createElement("div", { className: "text-red-300 mb-3" }, err), newKey && /* @__PURE__ */ React.createElement("div", { className: "bg-amber-400/10 border border-amber-400/40 rounded-xl p-4 mb-5" }, /* @__PURE__ */ React.createElement("p", { className: "text-amber-200 text-sm mb-2 font-semibold" }, "Guard\xE1 esta API key ahora \u2014 no se vuelve a mostrar."), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("code", { className: "flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-amber-300 text-sm break-all" }, newKey), /* @__PURE__ */ React.createElement(Btn, { kind: "ghost", onClick: () => copy(newKey) }, "Copiar"), /* @__PURE__ */ React.createElement(Btn, { kind: "ghost", onClick: () => setNewKey(null) }, "Listo"))), /* @__PURE__ */ React.createElement(Card, { title: "Nueva API key" }, /* @__PURE__ */ React.createElement("div", { className: "grid md:grid-cols-3 gap-3 items-end" }, /* @__PURE__ */ React.createElement(Field, { label: "Nombre (para reconocerla)" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: kf.name, onChange: (e) => setKf({ ...kf, name: e.target.value }), placeholder: "Integraci\xF3n CRM" })), /* @__PURE__ */ React.createElement(Field, { label: "Permisos" }, /* @__PURE__ */ React.createElement("div", { className: "flex gap-4 pt-2" }, /* @__PURE__ */ React.createElement("label", { className: "flex items-center gap-2 text-slate-300 text-sm" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: kf.read, onChange: (e) => setKf({ ...kf, read: e.target.checked }) }), " Lectura"), /* @__PURE__ */ React.createElement("label", { className: "flex items-center gap-2 text-slate-300 text-sm" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: kf.write, onChange: (e) => setKf({ ...kf, write: e.target.checked }) }), " Escritura"))), /* @__PURE__ */ React.createElement("div", { className: "mb-3" }, /* @__PURE__ */ React.createElement(Btn, { onClick: createKey }, "Generar key")))), /* @__PURE__ */ React.createElement(Card, { title: "API keys" }, /* @__PURE__ */ React.createElement("div", { className: "overflow-x-auto" }, /* @__PURE__ */ React.createElement("table", { className: "w-full text-sm" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "text-slate-400 text-left" }, /* @__PURE__ */ React.createElement("th", { className: "py-2" }, "Nombre"), /* @__PURE__ */ React.createElement("th", null, "Prefijo"), /* @__PURE__ */ React.createElement("th", null, "Permisos"), /* @__PURE__ */ React.createElement("th", null, "\xDAltimo uso"), /* @__PURE__ */ React.createElement("th", null, "Estado"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, keys.map((k) => /* @__PURE__ */ React.createElement("tr", { key: k.id, className: "border-t border-slate-700" }, /* @__PURE__ */ React.createElement("td", { className: "py-2 text-white" }, k.name), /* @__PURE__ */ React.createElement("td", { className: "text-slate-400 font-mono text-xs" }, k.prefix, "\u2026"), /* @__PURE__ */ React.createElement("td", { className: "text-slate-300" }, (k.scopes || []).join(", ")), /* @__PURE__ */ React.createElement("td", { className: "text-slate-500" }, k.last_used_at ? new Date(k.last_used_at).toLocaleString() : "nunca"), /* @__PURE__ */ React.createElement("td", null, k.revoked ? /* @__PURE__ */ React.createElement("span", { className: "text-xs text-red-300" }, "revocada") : /* @__PURE__ */ React.createElement("span", { className: "text-xs text-emerald-300" }, "activa")), /* @__PURE__ */ React.createElement("td", { className: "text-right" }, !k.revoked && /* @__PURE__ */ React.createElement(Btn, { kind: "danger", onClick: () => revokeKey(k) }, "Revocar")))))), !keys.length && /* @__PURE__ */ React.createElement("p", { className: "text-slate-500 py-3" }, "Todav\xEDa no creaste ninguna API key."))), /* @__PURE__ */ React.createElement(Card, { title: "Nuevo webhook", sub: "Recib\xED un POST firmado (HMAC-SHA256) cuando ocurra un evento." }, /* @__PURE__ */ React.createElement(Field, { label: "URL de destino" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: wf.url, onChange: (e) => setWf({ ...wf, url: e.target.value }), placeholder: "https://tu-servidor.com/webhooks/zelekpress" })), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-3 mb-3" }, events.map((ev) => /* @__PURE__ */ React.createElement("label", { key: ev, className: "flex items-center gap-2 text-slate-300 text-sm bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: wf.events.includes(ev), onChange: () => toggleWfEvent(ev) }), " ", ev))), /* @__PURE__ */ React.createElement(Btn, { onClick: createWh }, "Crear webhook")), /* @__PURE__ */ React.createElement(Card, { title: "Webhooks" }, wh.map((w) => /* @__PURE__ */ React.createElement("div", { key: w.id, className: "border border-slate-700 rounded-lg p-3 mb-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "text-white break-all" }, w.url), /* @__PURE__ */ React.createElement("p", { className: "text-slate-400 text-xs mt-1" }, (w.events || []).join(", ") || "sin eventos"), /* @__PURE__ */ React.createElement("p", { className: "text-slate-500 text-xs mt-1" }, "\xDAltima entrega: ", w.last_delivery_at ? new Date(w.last_delivery_at).toLocaleString() : "\u2014", w.last_status != null && /* @__PURE__ */ React.createElement("span", { className: w.last_status >= 200 && w.last_status < 300 ? " text-emerald-300" : " text-red-300" }, " \xB7 HTTP ", w.last_status), w.last_error && /* @__PURE__ */ React.createElement("span", { className: "text-red-300" }, " \xB7 ", w.last_error)), /* @__PURE__ */ React.createElement("p", { className: "text-slate-500 text-xs mt-1" }, "Secret: ", /* @__PURE__ */ React.createElement("code", { className: "text-slate-400" }, w.secret), " ", /* @__PURE__ */ React.createElement("button", { className: "text-amber-300 ml-1", onClick: () => copy(w.secret) }, "copiar"))), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2 shrink-0" }, /* @__PURE__ */ React.createElement(Btn, { kind: "ghost", onClick: () => testWh(w) }, "Probar"), /* @__PURE__ */ React.createElement(Btn, { kind: "ghost", onClick: () => toggleWh(w) }, w.active ? "Pausar" : "Activar"), /* @__PURE__ */ React.createElement(Btn, { kind: "danger", onClick: () => delWh(w) }, "Eliminar"))), !w.active && /* @__PURE__ */ React.createElement("p", { className: "text-amber-300 text-xs mt-2" }, "Pausado \u2014 no recibe eventos."))), !wh.length && /* @__PURE__ */ React.createElement("p", { className: "text-slate-500 py-2" }, "Todav\xEDa no configuraste webhooks.")));
+  }
   function UsageCard() {
     const [u, setU] = useState(null);
     useEffect(() => {
@@ -545,7 +628,7 @@
     const isAdmin = me.user.is_platform_admin;
     const [page, setPage] = useState(isAdmin ? "empresas" : "chatbots");
     const [botId, setBotId] = useState(null);
-    const baseNav = [["chatbots", "\u{1F916} Chatbots"], ["conversations", "\u{1F4AC} Conversaciones"], ["leads", "\u{1F4C7} Leads"], ["analytics", "\u{1F4CA} Analytics"]];
+    const baseNav = [["chatbots", "\u{1F916} Chatbots"], ["conversations", "\u{1F4AC} Conversaciones"], ["leads", "\u{1F4C7} Leads"], ["analytics", "\u{1F4CA} Analytics"], ["integraciones", "\u{1F50C} Integraciones"]];
     const nav = isAdmin ? [["empresas", "\u{1F3E2} Empresas"], ["planes", "\u{1F4B3} Planes"], ...baseNav] : baseNav;
     return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen flex" }, /* @__PURE__ */ React.createElement("aside", { className: "w-60 bg-slate-900 border-r border-slate-800 flex flex-col" }, /* @__PURE__ */ React.createElement("div", { className: "p-5 font-extrabold text-lg border-b border-slate-800" }, "\u26A1 Zelekpress"), companies.length > 0 ? /* @__PURE__ */ React.createElement("div", { className: "px-3 pt-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-500 mb-1" }, "Empresa activa"), /* @__PURE__ */ React.createElement(
       "select",
@@ -577,7 +660,7 @@
         },
         onChanged: onRefreshCompanies
       }
-    ) : page === "planes" ? /* @__PURE__ */ React.createElement(PlanesPage, null) : /* @__PURE__ */ React.createElement(React.Fragment, null, companyId && /* @__PURE__ */ React.createElement("div", { className: "mb-5 inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/30 text-amber-300 rounded-lg px-3 py-1.5 text-sm" }, "\u{1F3E2} Gestionando: ", /* @__PURE__ */ React.createElement("strong", { className: "text-amber-200" }, (companies.find((c) => c.id === companyId) || {}).name || companyId)), !companyId && /* @__PURE__ */ React.createElement("div", { className: "bg-slate-800/60 border border-slate-700 rounded-xl p-6 text-slate-300" }, /* @__PURE__ */ React.createElement("p", { className: "mb-1 font-semibold" }, "Eleg\xED una empresa para empezar."), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-slate-400" }, "Us\xE1 el desplegable ", /* @__PURE__ */ React.createElement("b", null, "\u201CEmpresa activa\u201D"), " arriba a la izquierda", isAdmin ? ", o entr\xE1 a \u{1F3E2} Empresas y toc\xE1 \u201CGestionar\u201D" : "", ". Todo lo que crees o edites (chatbots, conocimiento, etc.) pertenece a la empresa seleccionada.")), companyId && page === "chatbots" && !botId && /* @__PURE__ */ React.createElement(ChatbotsPage, { onOpen: setBotId }), companyId && page === "chatbots" && botId && /* @__PURE__ */ React.createElement(ChatbotDetail, { id: botId, onBack: () => setBotId(null) }), companyId && page === "conversations" && /* @__PURE__ */ React.createElement(ConversationsPage, null), companyId && page === "leads" && /* @__PURE__ */ React.createElement(LeadsPage, null), companyId && page === "analytics" && /* @__PURE__ */ React.createElement(AnalyticsPage, null))));
+    ) : page === "planes" ? /* @__PURE__ */ React.createElement(PlanesPage, null) : /* @__PURE__ */ React.createElement(React.Fragment, null, companyId && /* @__PURE__ */ React.createElement("div", { className: "mb-5 inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/30 text-amber-300 rounded-lg px-3 py-1.5 text-sm" }, "\u{1F3E2} Gestionando: ", /* @__PURE__ */ React.createElement("strong", { className: "text-amber-200" }, (companies.find((c) => c.id === companyId) || {}).name || companyId)), !companyId && /* @__PURE__ */ React.createElement("div", { className: "bg-slate-800/60 border border-slate-700 rounded-xl p-6 text-slate-300" }, /* @__PURE__ */ React.createElement("p", { className: "mb-1 font-semibold" }, "Eleg\xED una empresa para empezar."), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-slate-400" }, "Us\xE1 el desplegable ", /* @__PURE__ */ React.createElement("b", null, "\u201CEmpresa activa\u201D"), " arriba a la izquierda", isAdmin ? ", o entr\xE1 a \u{1F3E2} Empresas y toc\xE1 \u201CGestionar\u201D" : "", ". Todo lo que crees o edites (chatbots, conocimiento, etc.) pertenece a la empresa seleccionada.")), companyId && page === "chatbots" && !botId && /* @__PURE__ */ React.createElement(ChatbotsPage, { onOpen: setBotId }), companyId && page === "chatbots" && botId && /* @__PURE__ */ React.createElement(ChatbotDetail, { id: botId, onBack: () => setBotId(null) }), companyId && page === "conversations" && /* @__PURE__ */ React.createElement(ConversationsPage, null), companyId && page === "leads" && /* @__PURE__ */ React.createElement(LeadsPage, null), companyId && page === "analytics" && /* @__PURE__ */ React.createElement(AnalyticsPage, null), companyId && page === "integraciones" && /* @__PURE__ */ React.createElement(IntegracionesPage, null))));
   }
   function App() {
     const [me, setMe] = useState(null);

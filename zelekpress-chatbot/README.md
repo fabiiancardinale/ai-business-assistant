@@ -49,8 +49,46 @@ con IA. Producto propio de Zelekpress.
 >   Stripe/Mercado Pago) para integrar cobros sin acoplar el código. En el
 >   panel: sección **Planes**, asignación de plan por empresa, y card de uso.
 >
+> - **Fase 10 (API pública + Webhooks):** cada empresa genera **API keys**
+>   (con permisos `read`/`write`; se guarda solo el hash, el valor se muestra
+>   una vez) para consumir la **API pública** de la plataforma por HTTP
+>   (`/api/v1/pub/...`: me, chatbots, leads, conversaciones, enviar mensaje,
+>   uso). Y configura **webhooks**: la plataforma hace POST firmado con
+>   **HMAC-SHA256** a la URL del cliente ante cada evento (`lead.created`,
+>   `conversation.created`, `human.requested`, `conversation.closed`), con
+>   diagnóstico de la última entrega. Todo se administra desde la sección
+>   **🔌 Integraciones** del panel.
+>
 > Nota: el tiempo real corre en un solo proceso (in-memory). Para escalar a
-> varios workers se cambia el bus a Redis, sin tocar la lógica.
+> varios workers se cambia el bus a Redis, sin tocar la lógica. Los webhooks
+> se entregan en un hilo best-effort; para reintentos/cola se cambia por
+> RQ/Celery sobre Redis sin tocar los llamadores.
+
+## API pública (Fase 10)
+
+Autenticada por API key (header `Authorization: Bearer zk_live_...` o
+`X-Api-Key`). Cada request queda scopeada a la empresa dueña de la key.
+
+```bash
+# Listar chatbots de tu empresa
+curl https://api.zelekpress.com/api/v1/pub/chatbots \
+  -H "Authorization: Bearer zk_live_xxxxxxxx_..."
+
+# Enviar un mensaje a un chatbot (requiere permiso 'write')
+curl -X POST https://api.zelekpress.com/api/v1/pub/chatbots/1/message \
+  -H "Authorization: Bearer zk_live_xxxxxxxx_..." \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Hola, quiero info de los planes"}'
+```
+
+Endpoints: `GET /pub/me`, `GET /pub/usage`, `GET /pub/chatbots`,
+`GET /pub/leads`, `GET /pub/conversations`,
+`GET /pub/conversations/{id}/messages`, `POST /pub/chatbots/{id}/message`.
+
+**Webhooks:** cada POST lleva los headers `X-Zelekpress-Event` y
+`X-Zelekpress-Signature: sha256=<hmac>`. El receptor verifica la firma
+calculando `HMAC-SHA256(secret, body_crudo)` y comparándola. El cuerpo es
+`{"event": "...", "created_at": "...", "data": {...}}`.
 
 ## Activar la IA (Groq)
 

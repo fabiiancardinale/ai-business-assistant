@@ -10,6 +10,7 @@ from app.models.conversation import Conversation, Message
 from app.realtime.manager import manager
 from app.ai.service import generate_reply
 from app.billing.usage_service import track
+from app.webhooks.service import dispatch as dispatch_webhook
 
 logger = logging.getLogger("zelekpress.ai")
 
@@ -81,6 +82,10 @@ def request_human(db: Session, conv: Conversation) -> None:
         "type": "human_requested",
         "conversation_id": conv.id,
         "message": _msg_payload(sys),
+    })
+    dispatch_webhook(db, conv.company_id, "human.requested", {
+        "conversation_id": conv.id, "conversation_token": conv.token,
+        "chatbot_id": conv.chatbot_id,
     })
 
 

@@ -15,6 +15,7 @@ from app.models.conversation import Conversation
 from app.models.audit import AuditLog
 from app.realtime.service import add_message, handle_visitor_message, request_human
 from app.billing.usage_service import track
+from app.webhooks.service import dispatch as dispatch_webhook
 from app.schemas.chatbot import (
     ChatbotCreate, ChatbotUpdate, ChatbotOut,
     SettingsUpdate, SettingsOut, DomainsUpdate, WidgetConfigOut,
@@ -236,6 +237,10 @@ def create_session(
     db.commit()
     db.refresh(conv)
     track(db, bot.company_id, "conversations")
+    dispatch_webhook(db, bot.company_id, "conversation.created", {
+        "conversation_id": conv.id, "conversation_token": conv.token,
+        "chatbot_id": bot.id, "url": origin,
+    })
 
     s = db.scalar(select(ChatbotSettings).where(ChatbotSettings.chatbot_id == bot.id))
     greeting = s.greeting_message if s else None
@@ -323,6 +328,12 @@ def public_lead(
     db.commit()
     db.refresh(lead)
     track(db, bot.company_id, "leads")
+    dispatch_webhook(db, bot.company_id, "lead.created", {
+        "lead_id": lead.id, "chatbot_id": bot.id,
+        "name": lead.name, "email": lead.email, "phone": lead.phone,
+        "whatsapp": lead.whatsapp, "company_name": lead.company_name,
+        "message": lead.message, "conversation_id": lead.conversation_id,
+    })
     return {"ok": True, "lead_id": lead.id}
 
 
