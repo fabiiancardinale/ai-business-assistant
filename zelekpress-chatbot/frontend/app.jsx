@@ -601,11 +601,74 @@ function AnalyticsPage() {
   );
 }
 
+/* ========================= EMPRESAS (admin) ========================= */
+function EmpresasPage({ onManage, onChanged }) {
+  const [list, setList] = useState([]);
+  const [name, setName] = useState("");
+  const [err, setErr] = useState("");
+  const load = useCallback(() => api("GET", "/api/v1/admin/companies").then(setList).catch((e) => setErr(e.message)), []);
+  useEffect(() => { load(); }, [load]);
+  async function create() {
+    if (!name.trim()) return;
+    setErr("");
+    try { await api("POST", "/api/v1/admin/companies", { name: name.trim() }); setName(""); load(); onChanged && onChanged(); }
+    catch (e) { setErr(e.message); }
+  }
+  async function toggle(c) {
+    try { await api("POST", "/api/v1/admin/companies/" + c.id + "/" + (c.status === "active" ? "suspend" : "activate")); load(); onChanged && onChanged(); }
+    catch (e) { setErr(e.message); }
+  }
+  async function del(c) {
+    if (!confirm('¿Eliminar la empresa "' + c.name + '" con todos sus chatbots, conversaciones y datos? No se puede deshacer.')) return;
+    try { await api("DELETE", "/api/v1/admin/companies/" + c.id); load(); onChanged && onChanged(); }
+    catch (e) { setErr(e.message); }
+  }
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-4">Empresas</h1>
+      {err && <div className="text-red-300 mb-3">{err}</div>}
+      <Card title="Nueva empresa" sub="Dala de alta para después armarle su chatbot.">
+        <div className="flex gap-2">
+          <input className={inputCls} placeholder="Nombre de la empresa (ej: Ferretería López)" value={name}
+            onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") create(); }} />
+          <Btn onClick={create}>Crear empresa</Btn>
+        </div>
+      </Card>
+      <Card title="Todas las empresas">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="text-slate-400 text-left"><th className="py-2">Empresa</th><th>Estado</th><th>Chatbots</th><th className="text-right">Acciones</th></tr></thead>
+            <tbody>
+              {list.map((c) => (
+                <tr key={c.id} className="border-t border-slate-700">
+                  <td className="py-2 text-white">{c.name}</td>
+                  <td><span className={"text-xs px-2 py-0.5 rounded-full " + (c.status === "active" ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-600/40 text-slate-400")}>{c.status}</span></td>
+                  <td className="text-slate-300">{c.chatbots}</td>
+                  <td>
+                    <div className="flex gap-2 justify-end">
+                      <Btn kind="primary" onClick={() => onManage(String(c.id))}>Gestionar</Btn>
+                      <Btn kind="ghost" onClick={() => toggle(c)}>{c.status === "active" ? "Suspender" : "Activar"}</Btn>
+                      <Btn kind="danger" onClick={() => del(c)}>Eliminar</Btn>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!list.length && <p className="text-slate-500 py-3">No hay empresas. Creá la primera arriba.</p>}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 /* ========================= SHELL ========================= */
-function Shell({ me, companies, companyId, onSelectCompany, onLogout }) {
-  const [page, setPage] = useState("chatbots");
+function Shell({ me, companies, companyId, onSelectCompany, onRefreshCompanies, onLogout }) {
+  const isAdmin = me.user.is_platform_admin;
+  const [page, setPage] = useState(isAdmin ? "empresas" : "chatbots");
   const [botId, setBotId] = useState(null);
-  const nav = [["chatbots", "🤖 Chatbots"], ["conversations", "💬 Conversaciones"], ["leads", "📇 Leads"], ["analytics", "📊 Analytics"]];
+  const baseNav = [["chatbots", "🤖 Chatbots"], ["conversations", "💬 Conversaciones"], ["leads", "📇 Leads"], ["analytics", "📊 Analytics"]];
+  const nav = isAdmin ? [["empresas", "🏢 Empresas"], ...baseNav] : baseNav;
   return (
     <div className="min-h-screen flex">
       <aside className="w-60 bg-slate-900 border-r border-slate-800 flex flex-col">
@@ -633,23 +696,32 @@ function Shell({ me, companies, companyId, onSelectCompany, onLogout }) {
           <button onClick={onLogout} className="text-red-300">Salir</button>
         </div>
       </aside>
-      <main key={companyId} className="flex-1 p-8 overflow-y-auto max-w-5xl">
-        {companyId && (
-          <div className="mb-5 inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/30 text-amber-300 rounded-lg px-3 py-1.5 text-sm">
-            🏢 Gestionando: <strong className="text-amber-200">{(companies.find((c) => c.id === companyId) || {}).name || companyId}</strong>
-          </div>
+      <main key={page === "empresas" ? "empresas" : companyId} className="flex-1 p-8 overflow-y-auto max-w-5xl">
+        {page === "empresas" ? (
+          <EmpresasPage
+            onManage={(id) => { onSelectCompany(id); setPage("chatbots"); setBotId(null); }}
+            onChanged={onRefreshCompanies}
+          />
+        ) : (
+          <>
+            {companyId && (
+              <div className="mb-5 inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/30 text-amber-300 rounded-lg px-3 py-1.5 text-sm">
+                🏢 Gestionando: <strong className="text-amber-200">{(companies.find((c) => c.id === companyId) || {}).name || companyId}</strong>
+              </div>
+            )}
+            {!companyId && (
+              <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6 text-slate-300">
+                <p className="mb-1 font-semibold">Elegí una empresa para empezar.</p>
+                <p className="text-sm text-slate-400">Usá el desplegable <b>“Empresa activa”</b> arriba a la izquierda{isAdmin ? ", o entrá a 🏢 Empresas y tocá “Gestionar”" : ""}. Todo lo que crees o edites (chatbots, conocimiento, etc.) pertenece a la empresa seleccionada.</p>
+              </div>
+            )}
+            {companyId && page === "chatbots" && !botId && <ChatbotsPage onOpen={setBotId} />}
+            {companyId && page === "chatbots" && botId && <ChatbotDetail id={botId} onBack={() => setBotId(null)} />}
+            {companyId && page === "conversations" && <ConversationsPage />}
+            {companyId && page === "leads" && <LeadsPage />}
+            {companyId && page === "analytics" && <AnalyticsPage />}
+          </>
         )}
-        {!companyId && (
-          <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6 text-slate-300">
-            <p className="mb-1 font-semibold">Elegí una empresa para empezar.</p>
-            <p className="text-sm text-slate-400">Usá el desplegable <b>“Empresa activa”</b> arriba a la izquierda. Todo lo que crees o edites (chatbots, conocimiento, etc.) pertenece a la empresa que tengas seleccionada.</p>
-          </div>
-        )}
-        {companyId && page === "chatbots" && !botId && <ChatbotsPage onOpen={setBotId} />}
-        {companyId && page === "chatbots" && botId && <ChatbotDetail id={botId} onBack={() => setBotId(null)} />}
-        {companyId && page === "conversations" && <ConversationsPage />}
-        {companyId && page === "leads" && <LeadsPage />}
-        {companyId && page === "analytics" && <AnalyticsPage />}
       </main>
     </div>
   );
@@ -662,9 +734,9 @@ function App() {
   const [companyId, setCompanyId] = useState(LS.company || "");
   const [checking, setChecking] = useState(true);
 
-  async function loadSession() {
-    const m = await api("GET", "/api/v1/auth/me");
-    // Empresas del usuario. El Super Admin ve TODAS las de la plataforma.
+  // Lista de empresas visibles: el cliente ve la(s) suya(s); el Super Admin
+  // ve TODAS las de la plataforma.
+  async function fetchCompanies(m) {
     let comps = (m.companies || []).map((c) => ({ id: String(c.company_id), name: c.company_name }));
     if (m.user.is_platform_admin) {
       try {
@@ -672,16 +744,26 @@ function App() {
         comps = all.map((c) => ({ id: String(c.id), name: c.name }));
       } catch (e) { /* sin permiso o vacío */ }
     }
+    return comps;
+  }
+
+  async function loadSession() {
+    const m = await api("GET", "/api/v1/auth/me");
+    const comps = await fetchCompanies(m);
     // Empresa activa: se mantiene la última si sigue siendo válida (para no
     // perderla al recargar). Si no, el cliente entra a la suya; el admin
-    // arranca SIN empresa (tiene que elegir a conciencia, así no crea cosas
-    // en la empresa equivocada).
+    // arranca SIN empresa (elige a conciencia).
     let cid = LS.company;
     if (!comps.find((c) => c.id === cid)) {
       cid = m.user.is_platform_admin ? "" : (comps[0] ? comps[0].id : "");
     }
     LS.company = cid;
     setMe(m); setCompanies(comps); setCompanyId(cid);
+  }
+
+  async function refreshCompanies() {
+    if (!me) return;
+    setCompanies(await fetchCompanies(me));
   }
 
   useEffect(() => {
@@ -694,7 +776,8 @@ function App() {
 
   if (checking) return <div className="min-h-screen flex items-center justify-center text-slate-500">Cargando…</div>;
   if (!me) return <Login onLogged={() => { LS.company = ""; loadSession(); }} />;
-  return <Shell me={me} companies={companies} companyId={companyId} onSelectCompany={selectCompany} onLogout={logout} />;
+  return <Shell me={me} companies={companies} companyId={companyId}
+    onSelectCompany={selectCompany} onRefreshCompanies={refreshCompanies} onLogout={logout} />;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
