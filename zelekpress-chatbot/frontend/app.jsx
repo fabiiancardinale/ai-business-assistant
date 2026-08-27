@@ -497,7 +497,7 @@ function AnalyticsPage() {
 }
 
 /* ========================= SHELL ========================= */
-function Shell({ me, onLogout }) {
+function Shell({ me, companies, companyId, onSelectCompany, onLogout }) {
   const [page, setPage] = useState("chatbots");
   const [botId, setBotId] = useState(null);
   const nav = [["chatbots", "🤖 Chatbots"], ["conversations", "💬 Conversaciones"], ["leads", "📇 Leads"], ["analytics", "📊 Analytics"]];
@@ -505,6 +505,17 @@ function Shell({ me, onLogout }) {
     <div className="min-h-screen flex">
       <aside className="w-60 bg-slate-900 border-r border-slate-800 flex flex-col">
         <div className="p-5 font-extrabold text-lg border-b border-slate-800">⚡ Zelekpress</div>
+        {companies.length > 0 ? (
+          <div className="px-3 pt-3">
+            <div className="text-xs text-slate-500 mb-1">Empresa</div>
+            <select value={companyId} onChange={(e) => onSelectCompany(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-100">
+              {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        ) : (
+          <div className="px-3 pt-3 text-xs text-amber-400">Esta cuenta no tiene empresas.{me.user.is_platform_admin ? " Creá una desde una cuenta cliente." : ""}</div>
+        )}
         <nav className="flex-1 p-2">
           {nav.map(([k, l]) => (
             <button key={k} onClick={() => { setPage(k); setBotId(null); }}
@@ -512,16 +523,17 @@ function Shell({ me, onLogout }) {
           ))}
         </nav>
         <div className="p-4 border-t border-slate-800 text-sm text-slate-400">
-          <div className="mb-2 truncate">{me.user.name}</div>
+          <div className="mb-2 truncate">{me.user.name}{me.user.is_platform_admin ? " (admin)" : ""}</div>
           <button onClick={onLogout} className="text-red-300">Salir</button>
         </div>
       </aside>
-      <main className="flex-1 p-8 overflow-y-auto max-w-5xl">
-        {page === "chatbots" && !botId && <ChatbotsPage onOpen={setBotId} />}
-        {page === "chatbots" && botId && <ChatbotDetail id={botId} onBack={() => setBotId(null)} />}
-        {page === "conversations" && <ConversationsPage />}
-        {page === "leads" && <LeadsPage />}
-        {page === "analytics" && <AnalyticsPage />}
+      <main key={companyId} className="flex-1 p-8 overflow-y-auto max-w-5xl">
+        {!companyId && <p className="text-slate-400">Elegí o creá una empresa para empezar.</p>}
+        {companyId && page === "chatbots" && !botId && <ChatbotsPage onOpen={setBotId} />}
+        {companyId && page === "chatbots" && botId && <ChatbotDetail id={botId} onBack={() => setBotId(null)} />}
+        {companyId && page === "conversations" && <ConversationsPage />}
+        {companyId && page === "leads" && <LeadsPage />}
+        {companyId && page === "analytics" && <AnalyticsPage />}
       </main>
     </div>
   );
@@ -530,15 +542,37 @@ function Shell({ me, onLogout }) {
 /* ========================= APP ========================= */
 function App() {
   const [me, setMe] = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [companyId, setCompanyId] = useState(LS.company || "");
   const [checking, setChecking] = useState(true);
+
+  async function loadSession() {
+    const m = await api("GET", "/api/v1/auth/me");
+    // Empresas del usuario. El Super Admin ve TODAS las de la plataforma.
+    let comps = (m.companies || []).map((c) => ({ id: String(c.company_id), name: c.company_name }));
+    if (m.user.is_platform_admin) {
+      try {
+        const all = await api("GET", "/api/v1/admin/companies");
+        comps = all.map((c) => ({ id: String(c.id), name: c.name }));
+      } catch (e) { /* sin permiso o vacío */ }
+    }
+    let cid = LS.company;
+    if (!comps.find((c) => c.id === cid)) cid = comps[0] ? comps[0].id : "";
+    LS.company = cid;
+    setMe(m); setCompanies(comps); setCompanyId(cid);
+  }
+
   useEffect(() => {
-    if (LS.token) api("GET", "/api/v1/auth/me").then((m) => { setMe(m); if (!LS.company && m.companies[0]) LS.company = String(m.companies[0].company_id); }).catch(() => { LS.token = ""; }).finally(() => setChecking(false));
+    if (LS.token) loadSession().catch(() => { LS.token = ""; }).finally(() => setChecking(false));
     else setChecking(false);
   }, []);
-  function logout() { LS.token = ""; LS.company = ""; setMe(null); }
+
+  function logout() { LS.token = ""; LS.company = ""; setMe(null); setCompanies([]); setCompanyId(""); }
+  function selectCompany(id) { LS.company = id; setCompanyId(id); }
+
   if (checking) return <div className="min-h-screen flex items-center justify-center text-slate-500">Cargando…</div>;
-  if (!me) return <Login onLogged={setMe} />;
-  return <Shell me={me} onLogout={logout} />;
+  if (!me) return <Login onLogged={() => loadSession()} />;
+  return <Shell me={me} companies={companies} companyId={companyId} onSelectCompany={selectCompany} onLogout={logout} />;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);

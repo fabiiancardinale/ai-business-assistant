@@ -354,11 +354,19 @@
     ] : [];
     return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h1", { className: "text-2xl font-bold mb-4" }, "Analytics"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 md:grid-cols-5 gap-3 mb-5" }, cards.map(([l, n]) => /* @__PURE__ */ React.createElement("div", { key: l, className: "bg-slate-800/60 border border-slate-700 rounded-xl p-4" }, /* @__PURE__ */ React.createElement("div", { className: "text-2xl font-extrabold text-white" }, n), /* @__PURE__ */ React.createElement("div", { className: "text-slate-400 text-xs" }, l)))), /* @__PURE__ */ React.createElement(Card, { title: "Preguntas sin respuesta", sub: "Lo que el bot no supo. Respondelas para sumarlas a la Knowledge Base." }, un.map((u) => /* @__PURE__ */ React.createElement("div", { key: u.id, className: "border-b border-slate-700 py-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-white text-sm mb-1" }, u.question, " ", /* @__PURE__ */ React.createElement("span", { className: "text-xs text-slate-500" }, "\xB7 ", u.count, "x")), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, placeholder: "Respuesta correcta\u2026", value: answer[u.id] || "", onChange: (e) => setAnswer({ ...answer, [u.id]: e.target.value }) }), /* @__PURE__ */ React.createElement(Btn, { onClick: () => addKb(u) }, "Agregar a KB")))), !un.length && /* @__PURE__ */ React.createElement("p", { className: "text-slate-500" }, "Nada pendiente. \u{1F389}")));
   }
-  function Shell({ me, onLogout }) {
+  function Shell({ me, companies, companyId, onSelectCompany, onLogout }) {
     const [page, setPage] = useState("chatbots");
     const [botId, setBotId] = useState(null);
     const nav = [["chatbots", "\u{1F916} Chatbots"], ["conversations", "\u{1F4AC} Conversaciones"], ["leads", "\u{1F4C7} Leads"], ["analytics", "\u{1F4CA} Analytics"]];
-    return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen flex" }, /* @__PURE__ */ React.createElement("aside", { className: "w-60 bg-slate-900 border-r border-slate-800 flex flex-col" }, /* @__PURE__ */ React.createElement("div", { className: "p-5 font-extrabold text-lg border-b border-slate-800" }, "\u26A1 Zelekpress"), /* @__PURE__ */ React.createElement("nav", { className: "flex-1 p-2" }, nav.map(([k, l]) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen flex" }, /* @__PURE__ */ React.createElement("aside", { className: "w-60 bg-slate-900 border-r border-slate-800 flex flex-col" }, /* @__PURE__ */ React.createElement("div", { className: "p-5 font-extrabold text-lg border-b border-slate-800" }, "\u26A1 Zelekpress"), companies.length > 0 ? /* @__PURE__ */ React.createElement("div", { className: "px-3 pt-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-500 mb-1" }, "Empresa"), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        value: companyId,
+        onChange: (e) => onSelectCompany(e.target.value),
+        className: "w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-100"
+      },
+      companies.map((c) => /* @__PURE__ */ React.createElement("option", { key: c.id, value: c.id }, c.name))
+    )) : /* @__PURE__ */ React.createElement("div", { className: "px-3 pt-3 text-xs text-amber-400" }, "Esta cuenta no tiene empresas.", me.user.is_platform_admin ? " Cre\xE1 una desde una cuenta cliente." : ""), /* @__PURE__ */ React.createElement("nav", { className: "flex-1 p-2" }, nav.map(([k, l]) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: k,
@@ -369,16 +377,32 @@
         className: "w-full text-left px-4 py-2.5 rounded-lg mb-1 " + (page === k ? "bg-slate-800 text-white" : "text-slate-400 hover:bg-slate-800/50")
       },
       l
-    ))), /* @__PURE__ */ React.createElement("div", { className: "p-4 border-t border-slate-800 text-sm text-slate-400" }, /* @__PURE__ */ React.createElement("div", { className: "mb-2 truncate" }, me.user.name), /* @__PURE__ */ React.createElement("button", { onClick: onLogout, className: "text-red-300" }, "Salir"))), /* @__PURE__ */ React.createElement("main", { className: "flex-1 p-8 overflow-y-auto max-w-5xl" }, page === "chatbots" && !botId && /* @__PURE__ */ React.createElement(ChatbotsPage, { onOpen: setBotId }), page === "chatbots" && botId && /* @__PURE__ */ React.createElement(ChatbotDetail, { id: botId, onBack: () => setBotId(null) }), page === "conversations" && /* @__PURE__ */ React.createElement(ConversationsPage, null), page === "leads" && /* @__PURE__ */ React.createElement(LeadsPage, null), page === "analytics" && /* @__PURE__ */ React.createElement(AnalyticsPage, null)));
+    ))), /* @__PURE__ */ React.createElement("div", { className: "p-4 border-t border-slate-800 text-sm text-slate-400" }, /* @__PURE__ */ React.createElement("div", { className: "mb-2 truncate" }, me.user.name, me.user.is_platform_admin ? " (admin)" : ""), /* @__PURE__ */ React.createElement("button", { onClick: onLogout, className: "text-red-300" }, "Salir"))), /* @__PURE__ */ React.createElement("main", { key: companyId, className: "flex-1 p-8 overflow-y-auto max-w-5xl" }, !companyId && /* @__PURE__ */ React.createElement("p", { className: "text-slate-400" }, "Eleg\xED o cre\xE1 una empresa para empezar."), companyId && page === "chatbots" && !botId && /* @__PURE__ */ React.createElement(ChatbotsPage, { onOpen: setBotId }), companyId && page === "chatbots" && botId && /* @__PURE__ */ React.createElement(ChatbotDetail, { id: botId, onBack: () => setBotId(null) }), companyId && page === "conversations" && /* @__PURE__ */ React.createElement(ConversationsPage, null), companyId && page === "leads" && /* @__PURE__ */ React.createElement(LeadsPage, null), companyId && page === "analytics" && /* @__PURE__ */ React.createElement(AnalyticsPage, null)));
   }
   function App() {
     const [me, setMe] = useState(null);
+    const [companies, setCompanies] = useState([]);
+    const [companyId, setCompanyId] = useState(LS.company || "");
     const [checking, setChecking] = useState(true);
+    async function loadSession() {
+      const m = await api("GET", "/api/v1/auth/me");
+      let comps = (m.companies || []).map((c) => ({ id: String(c.company_id), name: c.company_name }));
+      if (m.user.is_platform_admin) {
+        try {
+          const all = await api("GET", "/api/v1/admin/companies");
+          comps = all.map((c) => ({ id: String(c.id), name: c.name }));
+        } catch (e) {
+        }
+      }
+      let cid = LS.company;
+      if (!comps.find((c) => c.id === cid)) cid = comps[0] ? comps[0].id : "";
+      LS.company = cid;
+      setMe(m);
+      setCompanies(comps);
+      setCompanyId(cid);
+    }
     useEffect(() => {
-      if (LS.token) api("GET", "/api/v1/auth/me").then((m) => {
-        setMe(m);
-        if (!LS.company && m.companies[0]) LS.company = String(m.companies[0].company_id);
-      }).catch(() => {
+      if (LS.token) loadSession().catch(() => {
         LS.token = "";
       }).finally(() => setChecking(false));
       else setChecking(false);
@@ -387,13 +411,20 @@
       LS.token = "";
       LS.company = "";
       setMe(null);
+      setCompanies([]);
+      setCompanyId("");
+    }
+    function selectCompany(id) {
+      LS.company = id;
+      setCompanyId(id);
     }
     if (checking) return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen flex items-center justify-center text-slate-500" }, "Cargando\u2026");
-    if (!me) return /* @__PURE__ */ React.createElement(Login, { onLogged: setMe });
-    return /* @__PURE__ */ React.createElement(Shell, { me, onLogout: logout });
+    if (!me) return /* @__PURE__ */ React.createElement(Login, { onLogged: () => loadSession() });
+    return /* @__PURE__ */ React.createElement(Shell, { me, companies, companyId, onSelectCompany: selectCompany, onLogout: logout });
   }
   ReactDOM.createRoot(document.getElementById("root")).render(/* @__PURE__ */ React.createElement(App, null));
 })();
+
   </script>
 </body>
 </html>
