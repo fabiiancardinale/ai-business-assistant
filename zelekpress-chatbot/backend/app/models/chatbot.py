@@ -21,10 +21,26 @@ class Chatbot(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)  # active|paused
     # Dominios autorizados a incrustar el widget. Vacío = cualquiera (dev).
     allowed_domains: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # Apariencia: tokens de diseño (colores, layout, launcher, header...).
+    # Guarda solo los overrides sobre DEFAULT_APPEARANCE.
+    appearance: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     settings: Mapped["ChatbotSettings"] = relationship(
         back_populates="chatbot", uselist=False, cascade="all, delete-orphan"
     )
+
+
+class ChatbotTheme(Base, TimestampMixin):
+    """Biblioteca de temas guardados por empresa (reutilizables)."""
+    __tablename__ = "chatbot_themes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    company_id: Mapped[int] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    base_theme: Mapped[str | None] = mapped_column(String(60), nullable=True)  # preset del que parte
+    tokens: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class ChatbotSettings(Base, TimestampMixin):

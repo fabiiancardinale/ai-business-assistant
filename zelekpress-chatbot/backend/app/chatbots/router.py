@@ -187,6 +187,7 @@ def public_config(
             raise HTTPException(status_code=403, detail="Dominio no autorizado")
 
     s = db.scalar(select(ChatbotSettings).where(ChatbotSettings.chatbot_id == bot.id))
+    from app.core.themes import full_appearance
     return WidgetConfigOut(
         id=bot.id,
         name_public=bot.name_public,
@@ -194,4 +195,5 @@ def public_config(
         logo=bot.logo,
         language=bot.language,
         greeting_message=s.greeting_message if s else None,
+        appearance=full_appearance(bot.appearance),
     )

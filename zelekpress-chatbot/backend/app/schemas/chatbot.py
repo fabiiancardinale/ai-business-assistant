@@ -72,3 +72,4 @@ class WidgetConfigOut(BaseModel):
     logo: str | None = None
     language: str
     greeting_message: str | None = None
+    appearance: dict = {}   # tokens de diseño completos (default + overrides)

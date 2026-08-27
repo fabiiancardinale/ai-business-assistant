@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preview del chatbot — Zelekpress</title>
+<style>
+  :root{ --gap:16px; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:#0f1117;color:#e7e9ee;}
+  .wrap{display:grid;grid-template-columns:340px 1fr;min-height:100vh;}
+  /* Panel de controles */
+  .controls{background:#171a22;border-right:1px solid #2a3040;padding:22px;overflow-y:auto;}
+  .controls h1{font-size:17px;margin:0 0 4px;}
+  .controls .sub{color:#8b93a5;font-size:12.5px;margin:0 0 18px;}
+  .group{border:1px solid #2a3040;border-radius:12px;padding:14px;margin-bottom:14px;}
+  .group h3{margin:0 0 12px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#8b93a5;}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+  .row label{font-size:13px;color:#c4cad6;}
+  .row input[type=color]{width:44px;height:30px;border:1px solid #2a3040;border-radius:6px;background:#0f1117;padding:2px;cursor:pointer;}
+  .row input[type=range]{width:130px;}
+  .row input[type=text]{width:150px;background:#0f1117;border:1px solid #2a3040;border-radius:6px;color:#e7e9ee;padding:7px 9px;font-size:13px;}
+  .row select{background:#0f1117;border:1px solid #2a3040;border-radius:6px;color:#e7e9ee;padding:7px 9px;font-size:13px;}
+  .presets{display:flex;flex-wrap:wrap;gap:8px;}
+  .presets button{background:#0f1117;border:1px solid #2a3040;color:#c4cad6;border-radius:100px;padding:7px 13px;font-size:12.5px;cursor:pointer;}
+  .presets button:hover{border-color:#F0C030;color:#F0C030;}
+  /* Escenario (sitio simulado) */
+  .stage{position:relative;background:
+        radial-gradient(circle at 30% 20%, #1e2230, #0f1117 60%);
+        overflow:hidden;}
+  .stage-note{position:absolute;top:18px;left:18px;color:#5b6472;font-size:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <aside class="controls">
+    <h1>Personalización</h1>
+    <p class="sub">Cambiá los valores y mirá el chat actualizarse en vivo. →</p>
+
+    <div class="group">
+      <h3>Temas predefinidos</h3>
+      <div class="presets" id="presets"></div>
+    </div>
+
+    <div class="group">
+      <h3>Colores</h3>
+      <div class="row"><label>Principal</label><input type="color" data-token="colors.primary"></div>
+      <div class="row"><label>Fondo del chat</label><input type="color" data-token="colors.background"></div>
+      <div class="row"><label>Burbuja usuario</label><input type="color" data-token="colors.user_bubble"></div>
+      <div class="row"><label>Burbuja bot</label><input type="color" data-token="colors.bot_bubble"></div>
+    </div>
+
+    <div class="group">
+      <h3>Header</h3>
+      <div class="row"><label>Título</label><input type="text" data-token="header.title"></div>
+      <div class="row"><label>Subtítulo</label><input type="text" data-token="header.subtitle"></div>
+      <div class="row"><label>Fondo header</label><input type="color" data-token="header.bg_color"></div>
+      <div class="row"><label>Texto header</label><input type="color" data-token="header.text_color"></div>
+    </div>
+
+    <div class="group">
+      <h3>Launcher</h3>
+      <div class="row"><label>Ícono (emoji)</label><input type="text" data-token="launcher.icon" maxlength="4"></div>
+      <div class="row"><label>Color</label><input type="color" data-token="launcher.color"></div>
+      <div class="row"><label>Tamaño</label><input type="range" min="48" max="80" data-token="launcher.size" data-num="1"></div>
+    </div>
+
+    <div class="group">
+      <h3>Layout</h3>
+      <div class="row"><label>Lado</label>
+        <select data-token="layout.side"><option value="right">Derecha</option><option value="left">Izquierda</option></select>
+      </div>
+      <div class="row"><label>Radio de bordes</label><input type="range" min="0" max="30" data-token="layout.radius" data-num="1"></div>
+      <div class="row"><label>Ancho</label><input type="range" min="300" max="440" data-token="layout.width" data-num="1"></div>
+    </div>
+  </aside>
+
+  <main class="stage" id="stage">
+    <div class="stage-note">Sitio del cliente (simulado)</div>
+    <!-- El widget se inyecta acá -->
+  </main>
+</div>
+
+<script>
+/* =====================================================================
+   PREVIEW / MINI-WIDGET (vanilla JS)
+   El mismo motor de render (renderWidget) es la base del widget real de
+   la Fase 4: recibe un objeto de tokens y pinta el chat. Acá lo usamos
+   para el preview en tiempo real.
+   ===================================================================== */
+
+// Apariencia por defecto (igual que backend DEFAULT_APPEARANCE).
+const DEFAULT = {
+  colors:{primary:"#F0C030",secondary:"#1a1310",background:"#ffffff",text:"#111827",
+          user_bubble:"#111827",user_text:"#ffffff",bot_bubble:"#f1f2f6",bot_text:"#111827",links:"#2563eb"},
+  layout:{mode:"floating",side:"right",width:370,height:560,radius:18,shadow:true},
+  launcher:{icon:"💬",image:null,size:60,color:"#F0C030",text:"",position_bottom:24,position_side:24},
+  header:{show_logo:true,title:"Asistente",subtitle:"En línea",bg_color:"#1a1310",text_color:"#ffffff"},
+  messages:{font:"Inter, system-ui, Arial, sans-serif",size:14,spacing:10}
+};
+
+// Presets (mismos que backend PRESET_THEMES; solo overrides).
+const PRESETS = {
+  modern:{label:"Modern",tokens:{colors:{primary:"#6366f1",user_bubble:"#6366f1",bot_bubble:"#eef2ff"},header:{bg_color:"#0b1020"},launcher:{color:"#6366f1"},layout:{radius:18}}},
+  minimal:{label:"Minimal",tokens:{colors:{primary:"#111827",user_bubble:"#111827",bot_bubble:"#f3f4f6"},header:{bg_color:"#ffffff",text_color:"#111827"},launcher:{color:"#111827"},layout:{radius:10}}},
+  corporate:{label:"Corporate",tokens:{colors:{primary:"#0ea5e9",user_bubble:"#0ea5e9",bot_bubble:"#e0f2fe"},header:{bg_color:"#0c4a6e"},launcher:{color:"#0ea5e9"},layout:{radius:12}}},
+  dark:{label:"Dark",tokens:{colors:{primary:"#F0C030",background:"#171a22",text:"#e7e9ee",bot_bubble:"#232733",bot_text:"#e7e9ee",user_bubble:"#F0C030",user_text:"#1a1310"},header:{bg_color:"#0f1117"},launcher:{color:"#F0C030"},layout:{radius:16}}},
+  glass:{label:"Glass",tokens:{colors:{primary:"#8b5cf6",bot_bubble:"#f5f3ff",user_bubble:"#8b5cf6"},header:{bg_color:"#8b5cf6"},launcher:{color:"#8b5cf6"},layout:{radius:22}}},
+  rounded:{label:"Rounded",tokens:{colors:{primary:"#10b981",user_bubble:"#10b981",bot_bubble:"#ecfdf5"},header:{bg_color:"#065f46"},launcher:{color:"#10b981",size:64},layout:{radius:28}}},
+  elegant:{label:"Elegant",tokens:{colors:{primary:"#b91c1c",user_bubble:"#b91c1c",bot_bubble:"#faf5f0",background:"#fffdfb"},header:{bg_color:"#1c1917",text_color:"#f5f0e6"},launcher:{color:"#b91c1c"},layout:{radius:8}}}
+};
+
+function deepMerge(base, over){
+  const out = structuredClone(base);
+  for(const k in (over||{})){
+    if(over[k] && typeof over[k]==="object" && !Array.isArray(over[k]) && typeof out[k]==="object")
+      out[k]=deepMerge(out[k],over[k]);
+    else out[k]=over[k];
+  }
+  return out;
+}
+
+// Estado actual = overrides. La apariencia final = DEFAULT + overrides.
+let overrides = {};
+function tokens(){ return deepMerge(DEFAULT, overrides); }
+
+function setToken(path, value){
+  const parts = path.split(".");
+  let node = overrides;
+  for(let i=0;i<parts.length-1;i++){ node[parts[i]] = node[parts[i]]||{}; node=node[parts[i]]; }
+  node[parts[parts.length-1]] = value;
+  render();
+  syncControls();
+}
+
+/* ---------- Render del widget desde tokens ---------- */
+function renderWidget(t){
+  const stage = document.getElementById("stage");
+  stage.querySelector(".aiba-preview")?.remove();
+
+  const side = t.layout.side==="left" ? "left" : "right";
+  const shadow = t.layout.shadow ? "0 20px 50px rgba(0,0,0,.35)" : "none";
+
+  const root = document.createElement("div");
+  root.className = "aiba-preview";
+  root.innerHTML = `
+    <div style="position:absolute;bottom:${t.launcher.position_bottom+80}px;${side}:24px;
+        width:${t.layout.width}px;max-width:calc(100% - 48px);height:${t.layout.height}px;max-height:calc(100% - 140px);
+        background:${t.colors.background};border-radius:${t.layout.radius}px;box-shadow:${shadow};
+        overflow:hidden;display:flex;flex-direction:column;font-family:${t.messages.font};color:${t.colors.text};">
+      <div style="background:${t.header.bg_color};color:${t.header.text_color};padding:14px 16px;display:flex;align-items:center;gap:10px;">
+        ${t.header.show_logo?`<div style="width:34px;height:34px;border-radius:50%;background:${t.colors.primary};display:flex;align-items:center;justify-content:center;font-size:18px;">${t.launcher.icon||"🤖"}</div>`:""}
+        <div><div style="font-weight:700;font-size:15px;">${escapeHtml(t.header.title)}</div>
+        <div style="font-size:12px;opacity:.85;display:flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;"></span>${escapeHtml(t.header.subtitle)}</div></div>
+      </div>
+      <div style="flex:1;padding:16px;overflow-y:auto;background:${shade(t.colors.background)};display:flex;flex-direction:column;gap:${t.messages.spacing}px;">
+        ${bubble("bot", "¡Hola! 👋 ¿En qué puedo ayudarte?", t)}
+        ${bubble("user", "Hola, quiero info de sus servicios", t)}
+        ${bubble("bot", "¡Claro! Ofrecemos desarrollo, automatización y chatbots con IA. ¿Qué necesitás?", t)}
+      </div>
+      <div style="padding:12px;border-top:1px solid #e5e7eb;background:#fff;display:flex;gap:8px;">
+        <div style="flex:1;height:40px;border:1px solid #d1d5db;border-radius:10px;display:flex;align-items:center;padding:0 12px;color:#9ca3af;font-size:14px;">Escribí un mensaje...</div>
+        <div style="width:40px;height:40px;border-radius:10px;background:${t.colors.primary};display:flex;align-items:center;justify-content:center;color:#fff;">➤</div>
+      </div>
+    </div>
+    <button style="position:absolute;bottom:${t.launcher.position_bottom}px;${side}:24px;
+        width:${t.launcher.size}px;height:${t.launcher.size}px;border-radius:50%;border:none;cursor:pointer;
+        background:${t.launcher.color};color:#fff;font-size:${Math.round(t.launcher.size*0.42)}px;
+        box-shadow:0 8px 24px rgba(0,0,0,.3);">${t.launcher.icon||"💬"}</button>
+  `;
+  stage.appendChild(root);
+}
+
+function bubble(who, text, t){
+  const isUser = who==="user";
+  const bg = isUser ? t.colors.user_bubble : t.colors.bot_bubble;
+  const col = isUser ? t.colors.user_text : t.colors.bot_text;
+  const align = isUser ? "flex-end" : "flex-start";
+  const radius = isUser ? "14px 14px 4px 14px" : "14px 14px 14px 4px";
+  return `<div style="display:flex;justify-content:${align};">
+    <div style="max-width:80%;background:${bg};color:${col};padding:10px 13px;border-radius:${radius};font-size:${t.messages.size}px;line-height:1.5;">${escapeHtml(text)}</div>
+  </div>`;
+}
+
+function shade(hex){ return "#f8fafc"; } // fondo suave del área de mensajes
+function escapeHtml(s){ return String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+/* ---------- Controles ---------- */
+function syncControls(){
+  const t = tokens();
+  document.querySelectorAll("[data-token]").forEach(el=>{
+    const val = el.dataset.token.split(".").reduce((o,k)=>o?.[k], t);
+    if(el.type==="range"||el.type==="text"||el.tagName==="SELECT") el.value = val ?? "";
+    else if(el.type==="color") el.value = toHex(val);
+  });
+}
+function toHex(c){ // recorta alpha si viene (#rrggbbaa)
+  if(typeof c!=="string") return "#000000";
+  return c.length>7 ? c.slice(0,7) : c;
+}
+
+document.querySelectorAll("[data-token]").forEach(el=>{
+  el.addEventListener("input", ()=>{
+    let v = el.value;
+    if(el.dataset.num) v = parseInt(v,10);
+    setToken(el.dataset.token, v);
+  });
+});
+
+// Presets
+const presetsEl = document.getElementById("presets");
+Object.entries(PRESETS).forEach(([key,p])=>{
+  const b = document.createElement("button");
+  b.textContent = p.label;
+  b.onclick = ()=>{ overrides = deepMerge(overrides, p.tokens); render(); syncControls(); };
+  presetsEl.appendChild(b);
+});
+
+function render(){ renderWidget(tokens()); }
+render(); syncControls();
+</script>
+</body>
+</html>
