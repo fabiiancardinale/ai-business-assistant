@@ -555,6 +555,33 @@ function LeadsPage() {
 }
 
 /* ========================= ANALYTICS ========================= */
+function UsageCard() {
+  const [u, setU] = useState(null);
+  useEffect(() => { api("GET", "/api/v1/analytics/usage").then(setU).catch(() => {}); }, []);
+  if (!u) return null;
+  const labels = { conversations: "Conversaciones", messages: "Mensajes", leads: "Leads" };
+  return (
+    <Card title="Uso del plan" sub={"Período " + u.period + (u.plan ? " · Plan: " + u.plan : " · Sin plan asignado")}>
+      <div className="grid md:grid-cols-3 gap-4">
+        {["conversations", "messages", "leads"].map((k) => {
+          const it = u.items[k]; const pct = it.limit ? Math.min(100, Math.round((it.used / it.limit) * 100)) : 0;
+          return (
+            <div key={k}>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-slate-300">{labels[k]}</span>
+                <span className={it.over ? "text-red-400" : "text-slate-400"}>{it.used}{it.limit ? " / " + it.limit : ""}</span>
+              </div>
+              <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                <div className={"h-full " + (it.over ? "bg-red-500" : "bg-amber-400")} style={{ width: (it.limit ? pct : 0) + "%" }}></div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 function AnalyticsPage() {
   const [ov, setOv] = useState(null);
   const [un, setUn] = useState([]);
@@ -577,6 +604,7 @@ function AnalyticsPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">Analytics</h1>
+      <UsageCard />
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
         {cards.map(([l, n]) => (
           <div key={l} className="bg-slate-800/60 border border-slate-700 rounded-xl p-4">
@@ -601,13 +629,78 @@ function AnalyticsPage() {
   );
 }
 
+/* ========================= PLANES (admin) ========================= */
+function PlanesPage() {
+  const [list, setList] = useState([]);
+  const [f, setF] = useState({ name: "", price: "", chatbots: "1", conversations: "500", messages: "5000" });
+  const [err, setErr] = useState("");
+  const load = useCallback(() => api("GET", "/api/v1/admin/plans").then(setList).catch((e) => setErr(e.message)), []);
+  useEffect(() => { load(); }, [load]);
+  const upd = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  async function create() {
+    if (!f.name.trim()) return;
+    setErr("");
+    try {
+      await api("POST", "/api/v1/admin/plans", {
+        name: f.name.trim(), price: parseFloat(f.price) || 0, currency: "CLP",
+        limits: { chatbots: parseInt(f.chatbots) || 1, conversations: parseInt(f.conversations) || 0, messages: parseInt(f.messages) || 0 },
+      });
+      setF({ name: "", price: "", chatbots: "1", conversations: "500", messages: "5000" }); load();
+    } catch (e) { setErr(e.message); }
+  }
+  async function del(p) { if (!confirm("¿Eliminar el plan " + p.name + "?")) return; try { await api("DELETE", "/api/v1/admin/plans/" + p.id); load(); } catch (e) { setErr(e.message); } }
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-4">Planes</h1>
+      {err && <div className="text-red-300 mb-3">{err}</div>}
+      <Card title="Nuevo plan">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <Field label="Nombre"><input className={inputCls} value={f.name} onChange={upd("name")} /></Field>
+          <Field label="Precio (CLP)"><input type="number" className={inputCls} value={f.price} onChange={upd("price")} /></Field>
+          <Field label="Chatbots"><input type="number" className={inputCls} value={f.chatbots} onChange={upd("chatbots")} /></Field>
+          <Field label="Conversaciones/mes"><input type="number" className={inputCls} value={f.conversations} onChange={upd("conversations")} /></Field>
+          <Field label="Mensajes/mes"><input type="number" className={inputCls} value={f.messages} onChange={upd("messages")} /></Field>
+        </div>
+        <Btn onClick={create}>Crear plan</Btn>
+      </Card>
+      <Card title="Planes disponibles">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="text-slate-400 text-left"><th className="py-2">Plan</th><th>Precio</th><th>Chatbots</th><th>Conversaciones</th><th>Mensajes</th><th></th></tr></thead>
+            <tbody>
+              {list.map((p) => (
+                <tr key={p.id} className="border-t border-slate-700">
+                  <td className="py-2 text-white">{p.name}</td>
+                  <td className="text-slate-300">${p.price} {p.currency}</td>
+                  <td className="text-slate-300">{(p.limits || {}).chatbots ?? "—"}</td>
+                  <td className="text-slate-300">{(p.limits || {}).conversations ?? "—"}</td>
+                  <td className="text-slate-300">{(p.limits || {}).messages ?? "—"}</td>
+                  <td className="text-right"><Btn kind="danger" onClick={() => del(p)}>Eliminar</Btn></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 /* ========================= EMPRESAS (admin) ========================= */
 function EmpresasPage({ onManage, onChanged }) {
   const [list, setList] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
-  const load = useCallback(() => api("GET", "/api/v1/admin/companies").then(setList).catch((e) => setErr(e.message)), []);
+  const load = useCallback(() => {
+    api("GET", "/api/v1/admin/companies").then(setList).catch((e) => setErr(e.message));
+    api("GET", "/api/v1/admin/plans").then(setPlans).catch(() => {});
+  }, []);
   useEffect(() => { load(); }, [load]);
+  async function assignPlan(companyId, planId) {
+    try { await api("POST", "/api/v1/admin/companies/" + companyId + "/plan", { plan_id: parseInt(planId) }); load(); onChanged && onChanged(); }
+    catch (e) { setErr(e.message); }
+  }
   async function create() {
     if (!name.trim()) return;
     setErr("");
@@ -637,13 +730,20 @@ function EmpresasPage({ onManage, onChanged }) {
       <Card title="Todas las empresas">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="text-slate-400 text-left"><th className="py-2">Empresa</th><th>Estado</th><th>Chatbots</th><th className="text-right">Acciones</th></tr></thead>
+            <thead><tr className="text-slate-400 text-left"><th className="py-2">Empresa</th><th>Estado</th><th>Chatbots</th><th>Plan</th><th className="text-right">Acciones</th></tr></thead>
             <tbody>
               {list.map((c) => (
                 <tr key={c.id} className="border-t border-slate-700">
                   <td className="py-2 text-white">{c.name}</td>
                   <td><span className={"text-xs px-2 py-0.5 rounded-full " + (c.status === "active" ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-600/40 text-slate-400")}>{c.status}</span></td>
                   <td className="text-slate-300">{c.chatbots}</td>
+                  <td>
+                    <select value={c.plan_id || ""} onChange={(e) => assignPlan(c.id, e.target.value)}
+                      className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-100">
+                      <option value="">Sin plan</option>
+                      {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </td>
                   <td>
                     <div className="flex gap-2 justify-end">
                       <Btn kind="primary" onClick={() => onManage(String(c.id))}>Gestionar</Btn>
@@ -668,7 +768,7 @@ function Shell({ me, companies, companyId, onSelectCompany, onRefreshCompanies, 
   const [page, setPage] = useState(isAdmin ? "empresas" : "chatbots");
   const [botId, setBotId] = useState(null);
   const baseNav = [["chatbots", "🤖 Chatbots"], ["conversations", "💬 Conversaciones"], ["leads", "📇 Leads"], ["analytics", "📊 Analytics"]];
-  const nav = isAdmin ? [["empresas", "🏢 Empresas"], ...baseNav] : baseNav;
+  const nav = isAdmin ? [["empresas", "🏢 Empresas"], ["planes", "💳 Planes"], ...baseNav] : baseNav;
   return (
     <div className="min-h-screen flex">
       <aside className="w-60 bg-slate-900 border-r border-slate-800 flex flex-col">
@@ -696,12 +796,14 @@ function Shell({ me, companies, companyId, onSelectCompany, onRefreshCompanies, 
           <button onClick={onLogout} className="text-red-300">Salir</button>
         </div>
       </aside>
-      <main key={page === "empresas" ? "empresas" : companyId} className="flex-1 p-8 overflow-y-auto max-w-5xl">
+      <main key={(page === "empresas" || page === "planes") ? page : companyId} className="flex-1 p-8 overflow-y-auto max-w-5xl">
         {page === "empresas" ? (
           <EmpresasPage
             onManage={(id) => { onSelectCompany(id); setPage("chatbots"); setBotId(null); }}
             onChanged={onRefreshCompanies}
           />
+        ) : page === "planes" ? (
+          <PlanesPage />
         ) : (
           <>
             {companyId && (

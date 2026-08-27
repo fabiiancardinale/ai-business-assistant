@@ -13,8 +13,15 @@ from app.models.lead import Lead
 from app.models.analytics import UnansweredQuestion
 from app.models.knowledge import KnowledgeSource
 from app.knowledge.service import process_source
+from app.billing.usage_service import summary as usage_summary
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
+
+
+@router.get("/usage")
+def get_usage(tenant: TenantContext = Depends(get_tenant), db: Session = Depends(get_db)):
+    """Uso del período actual vs. los límites del plan de la empresa."""
+    return usage_summary(db, tenant.company)
 
 
 def _count(db, model, *where):

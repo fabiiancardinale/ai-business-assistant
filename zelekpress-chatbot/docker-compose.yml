@@ -36,6 +36,7 @@ services:
              uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     volumes:
       - ./backend:/app
+      - ./widget:/app/widget    # el backend sirve el widget en /widget/widget.js
 
   # worker:  (fase posterior — RQ/Celery para RAG y webhooks)
   #   build: ./backend

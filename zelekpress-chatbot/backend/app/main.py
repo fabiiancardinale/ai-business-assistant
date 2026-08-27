@@ -52,12 +52,20 @@ _uploads_path = Path(settings.UPLOADS_DIR)
 _uploads_path.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(_uploads_path)), name="uploads")
 
-# Servir el widget (widget.js, demo.html) en /widget. En producción se
-# recomienda servirlo desde app.zelekpress.com, pero acá queda disponible
-# para pruebas y como fallback.
-_widget_path = Path(__file__).resolve().parent.parent.parent / "widget"
-if _widget_path.is_dir():
-    app.mount("/widget", StaticFiles(directory=str(_widget_path)), name="widget")
+# Servir el widget (widget.js, demo.html) en /widget. Buscamos la carpeta
+# en varias ubicaciones para que funcione tanto en el layout del repo como
+# dentro de Docker (donde /app es el backend). Se puede fijar con WIDGET_DIR.
+import os as _os
+_candidates = [
+    _os.environ.get("WIDGET_DIR", ""),
+    str(Path(__file__).resolve().parent.parent.parent / "widget"),  # repo: .../zelekpress-chatbot/widget
+    str(Path(__file__).resolve().parent.parent / "widget"),          # docker: /app/widget (montado)
+    "/widget",
+]
+for _cand in _candidates:
+    if _cand and Path(_cand).is_dir():
+        app.mount("/widget", StaticFiles(directory=_cand), name="widget")
+        break
 
 
 @app.get("/health", tags=["meta"])

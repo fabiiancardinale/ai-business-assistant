@@ -14,6 +14,7 @@ from app.models.chatbot import Chatbot, ChatbotSettings
 from app.models.conversation import Conversation
 from app.models.audit import AuditLog
 from app.realtime.service import add_message, handle_visitor_message, request_human
+from app.billing.usage_service import track
 from app.schemas.chatbot import (
     ChatbotCreate, ChatbotUpdate, ChatbotOut,
     SettingsUpdate, SettingsOut, DomainsUpdate, WidgetConfigOut,
@@ -234,6 +235,7 @@ def create_session(
     db.add(conv)
     db.commit()
     db.refresh(conv)
+    track(db, bot.company_id, "conversations")
 
     s = db.scalar(select(ChatbotSettings).where(ChatbotSettings.chatbot_id == bot.id))
     greeting = s.greeting_message if s else None
@@ -320,6 +322,7 @@ def public_lead(
     db.add(lead)
     db.commit()
     db.refresh(lead)
+    track(db, bot.company_id, "leads")
     return {"ok": True, "lead_id": lead.id}
 
 

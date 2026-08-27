@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.models.conversation import Conversation, Message
 from app.realtime.manager import manager
 from app.ai.service import generate_reply
+from app.billing.usage_service import track
 
 logger = logging.getLogger("zelekpress.ai")
 
@@ -32,6 +33,10 @@ def add_message(db: Session, conv: Conversation, role: str, content: str, author
     conv.last_message_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(m)
+    # Uso: contamos los mensajes que "cuestan" (visitante y bot); los de
+    # sistema/nota no.
+    if role in ("visitor", "bot", "agent"):
+        track(db, conv.company_id, "messages")
     return m
 
 

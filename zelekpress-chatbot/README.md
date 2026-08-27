@@ -42,6 +42,13 @@ con IA. Producto propio de Zelekpress.
 >   automática de **preguntas sin respuesta** (lo que la KB no cubrió) con
 >   acción de "agregar a la Knowledge Base" en un clic.
 >
+> - **Fase 9 (Planes + Uso + Billing):** medición de consumo por empresa y
+>   período (conversaciones, mensajes, leads) con endpoint `/analytics/usage`
+>   (uso vs. límites del plan); el admin crea/edita planes, los asigna a cada
+>   empresa, y hay una **abstracción de billing** (proveedor Manual + stubs de
+>   Stripe/Mercado Pago) para integrar cobros sin acoplar el código. En el
+>   panel: sección **Planes**, asignación de plan por empresa, y card de uso.
+>
 > Nota: el tiempo real corre en un solo proceso (in-memory). Para escalar a
 > varios workers se cambia el bus a Redis, sin tocar la lógica.
 
