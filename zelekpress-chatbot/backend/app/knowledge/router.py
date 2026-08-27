@@ -66,8 +66,9 @@ def list_sources(chatbot_id: int, tenant: TenantContext = Depends(get_tenant), d
 
 
 def _create_and_process(db, tenant, bot, **kwargs) -> KnowledgeSource:
-    enforce_limit(db, tenant.company, "knowledge_sources", KnowledgeSource,
-                  KnowledgeSource.company_id == tenant.company.id)
+    if not tenant.user.is_platform_admin:
+        enforce_limit(db, tenant.company, "knowledge_sources", KnowledgeSource,
+                      KnowledgeSource.company_id == tenant.company.id)
     src = KnowledgeSource(company_id=tenant.company.id, chatbot_id=bot.id, **kwargs)
     db.add(src)
     db.commit()

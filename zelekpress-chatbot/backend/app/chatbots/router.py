@@ -50,7 +50,9 @@ def create_chatbot(
     db: Session = Depends(get_db),
 ):
     # Respetar el límite de chatbots del plan (Chatbot Básico = 1).
-    enforce_limit(db, tenant.company, "chatbots", Chatbot, Chatbot.company_id == tenant.company.id)
+    # El Super Admin de la plataforma no tiene límite.
+    if not tenant.user.is_platform_admin:
+        enforce_limit(db, tenant.company, "chatbots", Chatbot, Chatbot.company_id == tenant.company.id)
 
     bot = Chatbot(
         company_id=tenant.company.id,
