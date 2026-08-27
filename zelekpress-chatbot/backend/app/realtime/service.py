@@ -1,12 +1,16 @@
 """Lógica compartida de conversaciones. La usan tanto los endpoints REST
 públicos como (a futuro) los WebSockets. Persiste en la base y transmite en
 vivo por el manager."""
+import logging
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
 from app.models.conversation import Conversation, Message
 from app.realtime.manager import manager
+from app.ai.service import generate_reply
+
+logger = logging.getLogger("zelekpress.ai")
 
 
 def _msg_payload(m: Message) -> dict:
@@ -31,15 +35,15 @@ def add_message(db: Session, conv: Conversation, role: str, content: str, author
     return m
 
 
-# Respuesta placeholder hasta la Fase 6 (IA real). No cambia la interfaz.
-PLACEHOLDER_REPLY = ("¡Gracias por tu mensaje! 🙌 En breve te respondemos. "
-                     "Si preferís, podés pedir hablar con una persona.")
+# Mensaje de seguridad si la IA falla (API caída, sin key mal configurada, etc.).
+FALLBACK_REPLY = ("Perdón, tuve un problema para responder en este momento. "
+                  "Probá de nuevo o pedí hablar con una persona.")
 
 
 def handle_visitor_message(db: Session, conv: Conversation, text: str) -> Message | None:
     """Guarda el mensaje del visitante, avisa a los agentes y —si NO está en
-    modo humano— genera la respuesta del bot. Devuelve el mensaje del bot (o
-    None si está en modo humano, donde responde un agente)."""
+    modo humano— genera la respuesta del bot con IA. Devuelve el mensaje del
+    bot (o None si está en modo humano, donde responde un agente)."""
     visitor_msg = add_message(db, conv, "visitor", text)
     manager.to_agents(conv.company_id, {
         "type": "visitor_message",
@@ -51,10 +55,15 @@ def handle_visitor_message(db: Session, conv: Conversation, text: str) -> Messag
     if conv.status == "human" or conv.human_requested:
         return None  # el agente responde
 
-    # La respuesta del bot vuelve por el propio REST (no la empujamos también
-    # por WS para no duplicarla). El WS del visitante se usa para los mensajes
-    # de los agentes humanos.
-    bot_msg = add_message(db, conv, "bot", PLACEHOLDER_REPLY)
+    # Respuesta con IA (Fase 6). Si algo falla, respondemos algo seguro y no
+    # rompemos el chat. La respuesta vuelve por REST (no la duplicamos por WS).
+    try:
+        reply_text = generate_reply(db, conv)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Fallo generando respuesta IA: %s", e)
+        reply_text = FALLBACK_REPLY
+
+    bot_msg = add_message(db, conv, "bot", reply_text)
     return bot_msg
 
 

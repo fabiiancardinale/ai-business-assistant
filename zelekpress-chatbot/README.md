@@ -23,8 +23,28 @@ con IA. Producto propio de Zelekpress.
 >
 > La arquitectura completa está en `docs/ARQUITECTURA-SAAS-ZELEKPRESS.md`.
 >
+> - **Fase 6 (IA real):** capa **AIProvider** desacoplada con **adapter de
+>   Groq** (y fallback "modo demo" sin key). El bot responde de verdad usando
+>   el system prompt/personalidad del negocio y el historial de la
+>   conversación, con reglas anti-invención. Agregar OpenAI/Anthropic/etc. es
+>   sumar un adapter, sin tocar el resto.
+>
 > Nota: el tiempo real corre en un solo proceso (in-memory). Para escalar a
 > varios workers se cambia el bus a Redis, sin tocar la lógica.
+
+## Activar la IA (Groq)
+
+Poné tu key de Groq en `backend/.env`:
+
+```env
+AI_PROVIDER=groq
+DEFAULT_AI_MODEL=llama-3.1-8b-instant
+GROQ_API_KEY=gsk_tu_key_real
+```
+
+Sin key, el bot funciona en "modo demo" (responde avisando que falta la
+key, sin llamar a ningún servicio). El modelo se puede fijar por chatbot
+desde sus settings, o global con `DEFAULT_AI_MODEL`.
 
 ## Instalar el widget en un sitio
 

@@ -30,7 +30,9 @@ class Settings(BaseSettings):
     SUPERADMIN_PASSWORD: str = "Zelekpress2026!"
     SUPERADMIN_NAME: str = "Zelekpress Admin"
 
-    # Proveedores de IA (se usan en fases posteriores)
+    # Proveedores de IA
+    AI_PROVIDER: str = "groq"                 # groq | (openai/anthropic/... en el futuro)
+    DEFAULT_AI_MODEL: str = "llama-3.1-8b-instant"
     GROQ_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
