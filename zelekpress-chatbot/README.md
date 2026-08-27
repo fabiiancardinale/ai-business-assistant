@@ -59,6 +59,24 @@ Sin key, el bot funciona en "modo demo" (responde avisando que falta la
 key, sin llamar a ningún servicio). El modelo se puede fijar por chatbot
 desde sus settings, o global con `DEFAULT_AI_MODEL`.
 
+## Panel visual (dashboard)
+
+`frontend/dashboard.html` es un panel React de un solo archivo (React +
+Tailwind por CDN, sin build). Para usarlo:
+
+1. Levantá el backend (`docker compose up` o uvicorn).
+2. Abrí `frontend/dashboard.html` en el navegador (doble clic).
+3. En la pantalla de login, poné la URL de tu API (ej. `http://localhost:8000`),
+   y **registrate** (te crea usuario + empresa) o ingresá con una cuenta ya creada.
+
+Desde ahí gestionás: chatbots (crear, configurar IA, apariencia con preview,
+código de instalación), Knowledge Base (texto/URL), conversaciones (responder
+como agente, tomar/cerrar), leads y analytics (con "agregar a la KB" de las
+preguntas sin respuesta).
+
+> El dashboard es para usuarios de empresa (clientes). El Super Admin de la
+> plataforma tiene su propio panel `/admin` (endpoints ya listos).
+
 ## Instalar el widget en un sitio
 
 ```html
