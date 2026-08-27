@@ -612,9 +612,10 @@ function Shell({ me, companies, companyId, onSelectCompany, onLogout }) {
         <div className="p-5 font-extrabold text-lg border-b border-slate-800">⚡ Zelekpress</div>
         {companies.length > 0 ? (
           <div className="px-3 pt-3">
-            <div className="text-xs text-slate-500 mb-1">Empresa</div>
+            <div className="text-xs text-slate-500 mb-1">Empresa activa</div>
             <select value={companyId} onChange={(e) => onSelectCompany(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-100">
+              <option value="">— Elegí una empresa —</option>
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
@@ -633,7 +634,17 @@ function Shell({ me, companies, companyId, onSelectCompany, onLogout }) {
         </div>
       </aside>
       <main key={companyId} className="flex-1 p-8 overflow-y-auto max-w-5xl">
-        {!companyId && <p className="text-slate-400">Elegí o creá una empresa para empezar.</p>}
+        {companyId && (
+          <div className="mb-5 inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/30 text-amber-300 rounded-lg px-3 py-1.5 text-sm">
+            🏢 Gestionando: <strong className="text-amber-200">{(companies.find((c) => c.id === companyId) || {}).name || companyId}</strong>
+          </div>
+        )}
+        {!companyId && (
+          <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6 text-slate-300">
+            <p className="mb-1 font-semibold">Elegí una empresa para empezar.</p>
+            <p className="text-sm text-slate-400">Usá el desplegable <b>“Empresa activa”</b> arriba a la izquierda. Todo lo que crees o edites (chatbots, conocimiento, etc.) pertenece a la empresa que tengas seleccionada.</p>
+          </div>
+        )}
         {companyId && page === "chatbots" && !botId && <ChatbotsPage onOpen={setBotId} />}
         {companyId && page === "chatbots" && botId && <ChatbotDetail id={botId} onBack={() => setBotId(null)} />}
         {companyId && page === "conversations" && <ConversationsPage />}
@@ -661,8 +672,14 @@ function App() {
         comps = all.map((c) => ({ id: String(c.id), name: c.name }));
       } catch (e) { /* sin permiso o vacío */ }
     }
+    // Empresa activa: se mantiene la última si sigue siendo válida (para no
+    // perderla al recargar). Si no, el cliente entra a la suya; el admin
+    // arranca SIN empresa (tiene que elegir a conciencia, así no crea cosas
+    // en la empresa equivocada).
     let cid = LS.company;
-    if (!comps.find((c) => c.id === cid)) cid = comps[0] ? comps[0].id : "";
+    if (!comps.find((c) => c.id === cid)) {
+      cid = m.user.is_platform_admin ? "" : (comps[0] ? comps[0].id : "");
+    }
     LS.company = cid;
     setMe(m); setCompanies(comps); setCompanyId(cid);
   }
@@ -676,7 +693,7 @@ function App() {
   function selectCompany(id) { LS.company = id; setCompanyId(id); }
 
   if (checking) return <div className="min-h-screen flex items-center justify-center text-slate-500">Cargando…</div>;
-  if (!me) return <Login onLogged={() => loadSession()} />;
+  if (!me) return <Login onLogged={() => { LS.company = ""; loadSession(); }} />;
   return <Shell me={me} companies={companies} companyId={companyId} onSelectCompany={selectCompany} onLogout={logout} />;
 }
 
