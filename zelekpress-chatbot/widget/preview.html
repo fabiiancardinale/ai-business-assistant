@@ -61,6 +61,8 @@
     <div class="group">
       <h3>Launcher</h3>
       <div class="row"><label>Ícono (emoji)</label><input type="text" data-token="launcher.icon" maxlength="4"></div>
+      <div class="row"><label>Imagen (PNG/JPG)</label><input type="file" id="launcherImage" accept="image/png,image/jpeg,image/webp" style="width:150px;font-size:11px;color:#c4cad6;"></div>
+      <div class="row"><label></label><button type="button" id="launcherImageClear" style="background:#0f1117;border:1px solid #2a3040;color:#8b93a5;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;">Quitar imagen</button></div>
       <div class="row"><label>Color</label><input type="color" data-token="launcher.color"></div>
       <div class="row"><label>Tamaño</label><input type="range" min="48" max="80" data-token="launcher.size" data-num="1"></div>
     </div>
@@ -141,6 +143,15 @@ function renderWidget(t){
   const side = t.layout.side==="left" ? "left" : "right";
   const shadow = t.layout.shadow ? "0 20px 50px rgba(0,0,0,.35)" : "none";
 
+  // Si hay imagen de launcher, se usa en el botón y en el logo del header.
+  const img = t.launcher.image;
+  const launcherInner = img
+    ? `<img src="${img}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+    : (t.launcher.icon || "💬");
+  const headerLogo = img
+    ? `<img src="${img}" alt="" style="width:100%;height:100%;object-fit:cover;">`
+    : `<span style="font-size:18px;">${t.launcher.icon||"🤖"}</span>`;
+
   const root = document.createElement("div");
   root.className = "aiba-preview";
   root.innerHTML = `
@@ -149,7 +160,7 @@ function renderWidget(t){
         background:${t.colors.background};border-radius:${t.layout.radius}px;box-shadow:${shadow};
         overflow:hidden;display:flex;flex-direction:column;font-family:${t.messages.font};color:${t.colors.text};">
       <div style="background:${t.header.bg_color};color:${t.header.text_color};padding:14px 16px;display:flex;align-items:center;gap:10px;">
-        ${t.header.show_logo?`<div style="width:34px;height:34px;border-radius:50%;background:${t.colors.primary};display:flex;align-items:center;justify-content:center;font-size:18px;">${t.launcher.icon||"🤖"}</div>`:""}
+        ${t.header.show_logo?`<div style="width:34px;height:34px;border-radius:50%;background:${t.colors.primary};display:flex;align-items:center;justify-content:center;overflow:hidden;">${headerLogo}</div>`:""}
         <div><div style="font-weight:700;font-size:15px;">${escapeHtml(t.header.title)}</div>
         <div style="font-size:12px;opacity:.85;display:flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;"></span>${escapeHtml(t.header.subtitle)}</div></div>
       </div>
@@ -165,8 +176,9 @@ function renderWidget(t){
     </div>
     <button style="position:absolute;bottom:${t.launcher.position_bottom}px;${side}:24px;
         width:${t.launcher.size}px;height:${t.launcher.size}px;border-radius:50%;border:none;cursor:pointer;
-        background:${t.launcher.color};color:#fff;font-size:${Math.round(t.launcher.size*0.42)}px;
-        box-shadow:0 8px 24px rgba(0,0,0,.3);">${t.launcher.icon||"💬"}</button>
+        background:${img?'transparent':t.launcher.color};color:#fff;font-size:${Math.round(t.launcher.size*0.42)}px;
+        overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;
+        box-shadow:0 8px 24px rgba(0,0,0,.3);">${launcherInner}</button>
   `;
   stage.appendChild(root);
 }
@@ -205,6 +217,24 @@ document.querySelectorAll("[data-token]").forEach(el=>{
     if(el.dataset.num) v = parseInt(v,10);
     setToken(el.dataset.token, v);
   });
+});
+
+// Imagen del launcher (en el preview usamos data URL local; en el panel
+// real se sube al backend y se guarda la URL en launcher.image).
+const launcherImage = document.getElementById("launcherImage");
+if (launcherImage){
+  launcherImage.addEventListener("change", ()=>{
+    const f = launcherImage.files[0];
+    if(!f) return;
+    if(f.size > 2*1024*1024){ alert("La imagen supera los 2 MB."); return; }
+    const reader = new FileReader();
+    reader.onload = ()=> setToken("launcher.image", reader.result);
+    reader.readAsDataURL(f);
+  });
+}
+document.getElementById("launcherImageClear")?.addEventListener("click", ()=>{
+  setToken("launcher.image", null);
+  if(launcherImage) launcherImage.value = "";
 });
 
 // Presets

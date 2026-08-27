@@ -1,7 +1,10 @@
 """Punto de entrada de la API — Plataforma SaaS de Chatbots de Zelekpress.
 FASE 1 (Fundación): auth, empresas multi-tenant, RBAC, planes, super admin."""
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.db import Base, engine
@@ -34,6 +37,12 @@ def on_startup() -> None:
     # En dev creamos las tablas si no existen. En producción se usa Alembic.
     if settings.APP_ENV != "production":
         Base.metadata.create_all(bind=engine)
+
+
+# Servir imágenes subidas (launcher, logo, avatar) en /uploads.
+_uploads_path = Path(settings.UPLOADS_DIR)
+_uploads_path.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_uploads_path)), name="uploads")
 
 
 @app.get("/health", tags=["meta"])

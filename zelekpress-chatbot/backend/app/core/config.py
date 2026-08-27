@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./dev.db"
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # Carpeta donde se guardan las imágenes subidas (launcher, logo, avatar).
+    UPLOADS_DIR: str = "./uploads"
+
     # Seguridad
     JWT_SECRET: str = "cambiar-esto-en-produccion"
     JWT_ALG: str = "HS256"

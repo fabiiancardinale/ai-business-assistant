@@ -1,13 +1,14 @@
 """Fase 3 — Personalización: apariencia del chatbot, presets y biblioteca de
 temas por empresa. La apariencia son 'tokens' que consumen tanto el preview
 en tiempo real como el widget real."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.deps import get_tenant, require_role, TenantContext
 from app.core.themes import PRESET_THEMES, DEFAULT_APPEARANCE, full_appearance, _merge
+from app.core.uploads import save_image
 from app.models.chatbot import Chatbot, ChatbotTheme
 from app.models.audit import AuditLog
 from app.schemas.theme import (
@@ -69,6 +70,46 @@ def apply_preset(
         raise HTTPException(status_code=404, detail="Tema no encontrado")
     bot = _bot(db, tenant, chatbot_id)
     bot.appearance = _merge(bot.appearance or {}, PRESET_THEMES[preset_key]["tokens"])
+    db.commit()
+    db.refresh(bot)
+    return AppearanceOut(chatbot_id=bot.id, appearance=full_appearance(bot.appearance), raw=bot.appearance or {})
+
+
+# ---------------------- Subida de imágenes (launcher / logo) ----------------------
+
+@router.post("/chatbots/{chatbot_id}/appearance/image", response_model=AppearanceOut)
+def upload_appearance_image(
+    chatbot_id: int,
+    target: str = "launcher",   # launcher | logo | avatar
+    file: UploadFile = File(...),
+    tenant: TenantContext = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+):
+    """Sube una imagen (PNG/JPG/WEBP) y la usa como ícono del launcher, logo
+    del header o avatar del bot, según `target`."""
+    if target not in ("launcher", "logo", "avatar"):
+        raise HTTPException(status_code=400, detail="target inválido")
+
+    bot = _bot(db, tenant, chatbot_id)
+    url = save_image(
+        file,
+        subdir=f"appearance/company_{tenant.company.id}",
+        name=f"chatbot_{bot.id}_{target}",
+    )
+
+    # Guardamos la URL en el token correspondiente.
+    if target == "launcher":
+        override = {"launcher": {"image": url}}
+    elif target == "logo":
+        override = {"header": {"logo": url}, "logo_url": url}
+        bot.logo = url
+    else:  # avatar
+        override = {"messages": {"bot_avatar": url}}
+        bot.avatar = url
+
+    bot.appearance = _merge(bot.appearance or {}, override)
+    db.add(AuditLog(company_id=tenant.company.id, user_id=tenant.user.id,
+                    action="upload", entity="chatbot_appearance", entity_id=bot.id))
     db.commit()
     db.refresh(bot)
     return AppearanceOut(chatbot_id=bot.id, appearance=full_appearance(bot.appearance), raw=bot.appearance or {})
