@@ -86,5 +86,9 @@ class PublicMessageIn(BaseModel):
 
 
 class PublicMessageOut(BaseModel):
-    reply: str
+    reply: str | None = None   # None cuando está en modo humano (responde un agente)
     session_id: str
+
+
+class SessionRef(BaseModel):
+    session_id: str | None = None

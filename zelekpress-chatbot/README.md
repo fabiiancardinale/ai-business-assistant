@@ -14,8 +14,17 @@ con IA. Producto propio de Zelekpress.
 > - **Fase 4 (Widget):** `widget/widget.js` real con **Shadow DOM**
 >   (aislado del sitio anfitrión), que lee la config remota y se instala con
 >   un `<script>`. Demo en `widget/demo.html`.
+> - **Fase 5 (Conversaciones):** persistencia de conversaciones/mensajes,
+>   **WebSockets** (push en vivo al visitante y a los agentes), **modo
+>   humano** (el visitante pide una persona, la IA se pausa, un agente toma
+>   la conversación, responde y la devuelve a la IA), y bandeja de agente en
+>   el backend. El widget escucha el WS y trae un botón "hablar con una
+>   persona".
 >
 > La arquitectura completa está en `docs/ARQUITECTURA-SAAS-ZELEKPRESS.md`.
+>
+> Nota: el tiempo real corre en un solo proceso (in-memory). Para escalar a
+> varios workers se cambia el bus a Redis, sin tocar la lógica.
 
 ## Instalar el widget en un sitio
 
@@ -106,7 +115,6 @@ FastAPI genera Swagger automático en **`/docs`** y OpenAPI en
 
 ## Próximas fases (según `docs/ARQUITECTURA-SAAS-ZELEKPRESS.md`)
 
-5. Conversaciones (WebSockets + modo humano)
 6. IA (AIProvider + adapters, Groq primero)
 7. Knowledge Base (RAG con pgvector)
 8. Leads y Analytics

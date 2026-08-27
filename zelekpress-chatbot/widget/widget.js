@@ -94,7 +94,9 @@
       + ".zp-title{ font-weight:700; font-size:15px; }"
       + ".zp-status{ font-size:12px; opacity:.85; display:flex; align-items:center; gap:5px; }"
       + ".zp-dot{ width:7px; height:7px; border-radius:50%; background:#22c55e; display:inline-block; }"
-      + ".zp-close{ margin-left:auto; background:transparent; border:none; color:inherit; font-size:22px; cursor:pointer; line-height:1; }"
+      + ".zp-human{ margin-left:auto; background:transparent; border:none; color:inherit; font-size:16px; cursor:pointer; opacity:.85; }"
+      + ".zp-human:hover{ opacity:1; }"
+      + ".zp-close{ background:transparent; border:none; color:inherit; font-size:22px; cursor:pointer; line-height:1; }"
       + ".zp-msgs{ flex:1; padding:16px; overflow-y:auto; background:#f8fafc; display:flex; flex-direction:column; gap:" + (messages.spacing || 10) + "px; }"
       + ".zp-row{ display:flex; }"
       + ".zp-row.user{ justify-content:flex-end; }"
@@ -117,6 +119,7 @@
       (header.show_logo === false ? "" : '<div class="zp-logo">' + headerLogo + "</div>") +
       "    <div><div class=\"zp-title\">" + esc(header.title || cfg.name_public || "Asistente") + "</div>" +
       '    <div class="zp-status"><span class="zp-dot"></span>' + esc(header.subtitle || "En línea") + "</div></div>" +
+      '    <button class="zp-human" title="Hablar con una persona">👤</button>' +
       '    <button class="zp-close" aria-label="Cerrar">&times;</button>' +
       "  </div>" +
       '  <div class="zp-msgs"></div>' +
@@ -134,9 +137,31 @@
     var sendBtn = root.querySelector(".zp-send");
     var launcherBtn = root.querySelector(".zp-launcher");
     var closeBtn = root.querySelector(".zp-close");
+    var humanBtn = root.querySelector(".zp-human");
 
     var sessionId = null;
     var opened = false;
+    var ws = null;
+
+    // Abre el WebSocket para recibir en vivo los mensajes de agentes humanos.
+    function connectWS() {
+      if (!sessionId || ws) return;
+      try {
+        var wsBase = API.replace(/^http/, "ws");
+        ws = new WebSocket(wsBase + "/api/v1/public/ws/" + encodeURIComponent(sessionId));
+        ws.onmessage = function (ev) {
+          try {
+            var data = JSON.parse(ev.data);
+            if (data.type === "message" && data.content) {
+              addBubble(data.content, data.role === "visitor" ? "user" : "bot");
+            } else if (data.type === "system" && data.content) {
+              addBubble(data.content, "bot");
+            }
+          } catch (e) {}
+        };
+        ws.onclose = function () { ws = null; };
+      } catch (e) { /* sin WS, seguimos por REST */ }
+    }
 
     function addBubble(text, who) {
       var row = document.createElement("div");
@@ -167,6 +192,7 @@
           .then(function (s) {
             sessionId = s.session_id;
             if (s.greeting) addBubble(s.greeting, "bot");
+            connectWS();
           })
           .catch(function () {
             if (cfg.greeting_message) addBubble(cfg.greeting_message, "bot");
@@ -201,9 +227,21 @@
         });
     }
 
+    function requestHuman() {
+      fetch(API + "/api/v1/public/chatbots/" + chatbotId + "/request-human", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId })
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (d.reply) addBubble(d.reply, "bot"); })
+        .catch(function () {});
+    }
+
     launcherBtn.addEventListener("click", openPanel);
     closeBtn.addEventListener("click", closePanel);
     sendBtn.addEventListener("click", send);
+    if (humanBtn) humanBtn.addEventListener("click", requestHuman);
     input.addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
   }
 })();

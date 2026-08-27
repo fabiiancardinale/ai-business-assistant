@@ -11,11 +11,13 @@ from app.core.db import get_db
 from app.core.deps import get_tenant, require_role, TenantContext
 from app.core.limits import enforce_limit
 from app.models.chatbot import Chatbot, ChatbotSettings
+from app.models.conversation import Conversation
 from app.models.audit import AuditLog
+from app.realtime.service import add_message, handle_visitor_message, request_human
 from app.schemas.chatbot import (
     ChatbotCreate, ChatbotUpdate, ChatbotOut,
     SettingsUpdate, SettingsOut, DomainsUpdate, WidgetConfigOut,
-    SessionOut, PublicMessageIn, PublicMessageOut,
+    SessionOut, PublicMessageIn, PublicMessageOut, SessionRef,
 )
 import secrets
 
@@ -214,17 +216,29 @@ def create_session(
     origin: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ):
-    """Inicia una sesión de visitante. Devuelve el saludo inicial. (La
-    persistencia completa de conversaciones llega en la Fase 5.)"""
+    """Inicia una sesión de visitante: crea la conversación persistente y
+    devuelve su token público + el saludo inicial."""
     bot = db.get(Chatbot, chatbot_id)
     if not bot or bot.status != "active":
         raise HTTPException(status_code=404, detail="Chatbot no disponible")
     if not _origin_allowed(bot, origin):
         raise HTTPException(status_code=403, detail="Dominio no autorizado")
 
+    conv = Conversation(
+        company_id=bot.company_id, chatbot_id=bot.id,
+        token=secrets.token_urlsafe(24), status="ai",
+        url=origin,
+    )
+    db.add(conv)
+    db.commit()
+    db.refresh(conv)
+
     s = db.scalar(select(ChatbotSettings).where(ChatbotSettings.chatbot_id == bot.id))
-    return SessionOut(session_id=secrets.token_urlsafe(18),
-                      greeting=s.greeting_message if s else None)
+    greeting = s.greeting_message if s else None
+    if greeting:
+        add_message(db, conv, "bot", greeting)
+
+    return SessionOut(session_id=conv.token, greeting=greeting)
 
 
 @public_router.post("/{chatbot_id}/message", response_model=PublicMessageOut)
@@ -234,20 +248,52 @@ def public_message(
     origin: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ):
-    """Recibe un mensaje del visitante y responde.
-
-    NOTA: en esta fase (4) la respuesta es un placeholder. La respuesta con
-    IA real (proveedores + streaming) se conecta en la Fase 6, y el chat en
-    vivo por WebSocket + persistencia en la Fase 5. La firma del endpoint no
-    cambiará, así que el widget no necesitará modificaciones."""
+    """Recibe un mensaje del visitante, lo persiste, avisa a los agentes y
+    (si no está en modo humano) responde. La respuesta con IA real llega en
+    la Fase 6 — la firma no cambia."""
     bot = db.get(Chatbot, chatbot_id)
     if not bot or bot.status != "active":
         raise HTTPException(status_code=404, detail="Chatbot no disponible")
     if not _origin_allowed(bot, origin):
         raise HTTPException(status_code=403, detail="Dominio no autorizado")
 
-    session_id = data.session_id or secrets.token_urlsafe(18)
-    reply = ("¡Gracias por tu mensaje! 🙌 En breve nuestro asistente con IA "
-             "responderá acá mismo. Mientras tanto, podés escribirnos por los "
-             "canales de contacto del sitio.")
-    return PublicMessageOut(reply=reply, session_id=session_id)
+    conv = _conv_by_token(db, data.session_id, bot)
+    bot_msg = handle_visitor_message(db, conv, data.message)
+    return PublicMessageOut(reply=bot_msg.content if bot_msg else None, session_id=conv.token)
+
+
+@public_router.post("/{chatbot_id}/request-human", response_model=PublicMessageOut)
+def public_request_human(
+    chatbot_id: int,
+    data: SessionRef,
+    origin: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    """El visitante pide hablar con una persona: la IA se pausa y se avisa a
+    los agentes."""
+    bot = db.get(Chatbot, chatbot_id)
+    if not bot or bot.status != "active":
+        raise HTTPException(status_code=404, detail="Chatbot no disponible")
+    if not _origin_allowed(bot, origin):
+        raise HTTPException(status_code=403, detail="Dominio no autorizado")
+
+    conv = _conv_by_token(db, data.session_id, bot)
+    request_human(db, conv)
+    return PublicMessageOut(
+        reply="Te estamos conectando con una persona del equipo. Escribí tu consulta y te respondemos por acá.",
+        session_id=conv.token,
+    )
+
+
+def _conv_by_token(db: Session, token: str | None, bot: Chatbot) -> Conversation:
+    conv = db.scalar(select(Conversation).where(Conversation.token == token)) if token else None
+    if not conv or conv.chatbot_id != bot.id:
+        # Si el token no existe (sesión perdida), creamos una nueva.
+        conv = Conversation(
+            company_id=bot.company_id, chatbot_id=bot.id,
+            token=secrets.token_urlsafe(24), status="ai",
+        )
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
+    return conv
