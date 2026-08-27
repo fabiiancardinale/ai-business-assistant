@@ -32,7 +32,9 @@ class Settings(BaseSettings):
 
     # Proveedores de IA
     AI_PROVIDER: str = "groq"                 # groq | (openai/anthropic/... en el futuro)
-    DEFAULT_AI_MODEL: str = "llama-3.1-8b-instant"
+    # Modelo por defecto. Los Llama de Groq pasaron a Enterprise; los GPT-OSS
+    # funcionan con una key común (plan developer).
+    DEFAULT_AI_MODEL: str = "openai/gpt-oss-20b"
     GROQ_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
