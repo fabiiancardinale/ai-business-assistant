@@ -15,7 +15,9 @@ from app.models.audit import AuditLog
 from app.schemas.chatbot import (
     ChatbotCreate, ChatbotUpdate, ChatbotOut,
     SettingsUpdate, SettingsOut, DomainsUpdate, WidgetConfigOut,
+    SessionOut, PublicMessageIn, PublicMessageOut,
 )
+import secrets
 
 router = APIRouter(prefix="/api/v1/chatbots", tags=["chatbots"])
 public_router = APIRouter(prefix="/api/v1/public/chatbots", tags=["widget"])
@@ -197,3 +199,55 @@ def public_config(
         greeting_message=s.greeting_message if s else None,
         appearance=full_appearance(bot.appearance),
     )
+
+
+def _origin_allowed(bot: Chatbot, origin: str | None) -> bool:
+    if not bot.allowed_domains:
+        return True
+    host = urlparse(origin).netloc.lower() if origin else ""
+    return host in {d.lower() for d in bot.allowed_domains}
+
+
+@public_router.post("/{chatbot_id}/session", response_model=SessionOut)
+def create_session(
+    chatbot_id: int,
+    origin: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    """Inicia una sesión de visitante. Devuelve el saludo inicial. (La
+    persistencia completa de conversaciones llega en la Fase 5.)"""
+    bot = db.get(Chatbot, chatbot_id)
+    if not bot or bot.status != "active":
+        raise HTTPException(status_code=404, detail="Chatbot no disponible")
+    if not _origin_allowed(bot, origin):
+        raise HTTPException(status_code=403, detail="Dominio no autorizado")
+
+    s = db.scalar(select(ChatbotSettings).where(ChatbotSettings.chatbot_id == bot.id))
+    return SessionOut(session_id=secrets.token_urlsafe(18),
+                      greeting=s.greeting_message if s else None)
+
+
+@public_router.post("/{chatbot_id}/message", response_model=PublicMessageOut)
+def public_message(
+    chatbot_id: int,
+    data: PublicMessageIn,
+    origin: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    """Recibe un mensaje del visitante y responde.
+
+    NOTA: en esta fase (4) la respuesta es un placeholder. La respuesta con
+    IA real (proveedores + streaming) se conecta en la Fase 6, y el chat en
+    vivo por WebSocket + persistencia en la Fase 5. La firma del endpoint no
+    cambiará, así que el widget no necesitará modificaciones."""
+    bot = db.get(Chatbot, chatbot_id)
+    if not bot or bot.status != "active":
+        raise HTTPException(status_code=404, detail="Chatbot no disponible")
+    if not _origin_allowed(bot, origin):
+        raise HTTPException(status_code=403, detail="Dominio no autorizado")
+
+    session_id = data.session_id or secrets.token_urlsafe(18)
+    reply = ("¡Gracias por tu mensaje! 🙌 En breve nuestro asistente con IA "
+             "responderá acá mismo. Mientras tanto, podés escribirnos por los "
+             "canales de contacto del sitio.")
+    return PublicMessageOut(reply=reply, session_id=session_id)

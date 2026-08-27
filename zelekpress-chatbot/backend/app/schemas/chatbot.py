@@ -73,3 +73,18 @@ class WidgetConfigOut(BaseModel):
     language: str
     greeting_message: str | None = None
     appearance: dict = {}   # tokens de diseño completos (default + overrides)
+
+
+class SessionOut(BaseModel):
+    session_id: str
+    greeting: str | None = None
+
+
+class PublicMessageIn(BaseModel):
+    message: str
+    session_id: str | None = None
+
+
+class PublicMessageOut(BaseModel):
+    reply: str
+    session_id: str

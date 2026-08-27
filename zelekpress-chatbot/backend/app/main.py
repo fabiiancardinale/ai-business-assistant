@@ -23,10 +23,13 @@ app = FastAPI(
     description="Plataforma SaaS multi-tenant de chatbots de Zelekpress.",
 )
 
+# El widget se incrusta en sitios de terceros, así que la API acepta
+# cualquier origen. No usamos cookies (auth por Bearer token en el header),
+# por eso allow_credentials=False es seguro y compatible con "*".
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -43,6 +46,13 @@ def on_startup() -> None:
 _uploads_path = Path(settings.UPLOADS_DIR)
 _uploads_path.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(_uploads_path)), name="uploads")
+
+# Servir el widget (widget.js, demo.html) en /widget. En producción se
+# recomienda servirlo desde app.zelekpress.com, pero acá queda disponible
+# para pruebas y como fallback.
+_widget_path = Path(__file__).resolve().parent.parent.parent / "widget"
+if _widget_path.is_dir():
+    app.mount("/widget", StaticFiles(directory=str(_widget_path)), name="widget")
 
 
 @app.get("/health", tags=["meta"])

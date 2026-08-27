@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sitio de prueba — Zelekpress Widget</title>
+<style>
+  body{font-family:Georgia,serif;margin:0;color:#222;line-height:1.6;}
+  header{background:#0d47a1;color:#fff;padding:40px 24px;}
+  main{max-width:760px;margin:0 auto;padding:40px 24px;}
+  h1{margin:0;}
+  .box{background:#f3f4f6;border:1px solid #ddd;border-radius:8px;padding:16px;margin:20px 0;}
+</style>
+</head>
+<body>
+  <header>
+    <h1>Ferretería Don José</h1>
+    <p>Un sitio cualquiera (simulado) donde instalamos el chatbot.</p>
+  </header>
+  <main>
+    <p>Este es el sitio de un cliente. Los estilos de esta página (Georgia,
+    azul, etc.) NO afectan al widget, porque el widget vive dentro de un
+    Shadow DOM aislado.</p>
+
+    <div class="box">
+      <strong>Cómo se instala:</strong> se pega este código antes de
+      <code>&lt;/body&gt;</code> — nada más.
+      <pre>&lt;script
+  src="https://app.zelekpress.com/widget/widget.js"
+  data-chatbot-id="1"
+  data-api="https://api.zelekpress.com"&gt;&lt;/script&gt;</pre>
+    </div>
+
+    <p>Abajo a la derecha (o izquierda, según la config) aparece el botón
+    del chat. Hacé clic para probarlo.</p>
+  </main>
+
+  <!-- ================= WIDGET =================
+       Para probar en local, apuntá data-api a tu backend (ej:
+       http://localhost:8000) y data-chatbot-id al id de tu chatbot. -->
+  <script
+    src="http://localhost:8000/widget/widget.js"
+    data-chatbot-id="1"
+    data-api="http://localhost:8000"></script>
+</body>
+</html>

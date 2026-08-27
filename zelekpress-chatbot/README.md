@@ -3,15 +3,36 @@
 Plataforma SaaS multi-tenant para crear, administrar y desplegar chatbots
 con IA. Producto propio de Zelekpress.
 
-> **Estado: Fases 1 y 2 — completas y verificadas.**
+> **Estado: Fases 1 a 4 — completas y verificadas.**
 > - **Fase 1 (Fundación):** FastAPI + PostgreSQL, auth JWT, multi-tenant
 >   real, RBAC, Super Admin, planes con el **Chatbot Básico ($9.990 CLP)**.
-> - **Fase 2 (Chatbots):** CRUD de chatbots + settings (personalidad,
->   mensajes, modelo, temperatura, comportamiento) + dominios autorizados,
->   con límite por plan (el Básico permite 1 chatbot) y config pública para
->   el widget (validación de dominio).
+> - **Fase 2 (Chatbots):** CRUD + settings + dominios autorizados, con
+>   límite por plan.
+> - **Fase 3 (Personalización):** tokens de diseño, 7 temas predefinidos,
+>   biblioteca de temas por empresa, subida de imagen para el launcher/logo,
+>   y **preview en tiempo real** (`widget/preview.html`).
+> - **Fase 4 (Widget):** `widget/widget.js` real con **Shadow DOM**
+>   (aislado del sitio anfitrión), que lee la config remota y se instala con
+>   un `<script>`. Demo en `widget/demo.html`.
 >
 > La arquitectura completa está en `docs/ARQUITECTURA-SAAS-ZELEKPRESS.md`.
+
+## Instalar el widget en un sitio
+
+```html
+<script
+  src="https://app.zelekpress.com/widget/widget.js"
+  data-chatbot-id="1"
+  data-api="https://api.zelekpress.com"></script>
+```
+
+Para probar en local: levantá el backend, abrí `widget/demo.html` (o
+serví el widget desde `http://localhost:8000/widget/widget.js`) y apuntá
+`data-api` a `http://localhost:8000`.
+
+> Nota: en la Fase 4 la respuesta del bot es un placeholder. La respuesta
+> con IA real llega en la Fase 6, y el chat en vivo (WebSocket + modo
+> humano + persistencia) en la Fase 5 — sin cambiar la instalación.
 
 ## Qué ya funciona (Fase 1)
 
@@ -85,8 +106,6 @@ FastAPI genera Swagger automático en **`/docs`** y OpenAPI en
 
 ## Próximas fases (según `docs/ARQUITECTURA-SAAS-ZELEKPRESS.md`)
 
-3. Personalización + preview en tiempo real
-4. Widget (JS + Shadow DOM)
 5. Conversaciones (WebSockets + modo humano)
 6. IA (AIProvider + adapters, Groq primero)
 7. Knowledge Base (RAG con pgvector)
