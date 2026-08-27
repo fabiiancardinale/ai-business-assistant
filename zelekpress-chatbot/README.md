@@ -3,11 +3,15 @@
 Plataforma SaaS multi-tenant para crear, administrar y desplegar chatbots
 con IA. Producto propio de Zelekpress.
 
-> **Estado: Fase 1 (Fundación) — completa y verificada.**
-> Backend FastAPI + PostgreSQL, autenticación JWT, multi-tenant real, RBAC,
-> Super Admin, y planes con el **Chatbot Básico ($9.990 CLP)** como plan
-> inicial real. La arquitectura completa está en
-> `docs/ARQUITECTURA-SAAS-ZELEKPRESS.md`.
+> **Estado: Fases 1 y 2 — completas y verificadas.**
+> - **Fase 1 (Fundación):** FastAPI + PostgreSQL, auth JWT, multi-tenant
+>   real, RBAC, Super Admin, planes con el **Chatbot Básico ($9.990 CLP)**.
+> - **Fase 2 (Chatbots):** CRUD de chatbots + settings (personalidad,
+>   mensajes, modelo, temperatura, comportamiento) + dominios autorizados,
+>   con límite por plan (el Básico permite 1 chatbot) y config pública para
+>   el widget (validación de dominio).
+>
+> La arquitectura completa está en `docs/ARQUITECTURA-SAAS-ZELEKPRESS.md`.
 
 ## Qué ya funciona (Fase 1)
 
@@ -81,7 +85,6 @@ FastAPI genera Swagger automático en **`/docs`** y OpenAPI en
 
 ## Próximas fases (según `docs/ARQUITECTURA-SAAS-ZELEKPRESS.md`)
 
-2. Chatbots (CRUD + settings + dominios)
 3. Personalización + preview en tiempo real
 4. Widget (JS + Shadow DOM)
 5. Conversaciones (WebSockets + modo humano)

@@ -11,6 +11,7 @@ from app.auth.router import router as auth_router
 from app.companies.router import router as companies_router
 from app.plans.router import public_router as plans_public_router, admin_router as plans_admin_router
 from app.admin.router import router as admin_router
+from app.chatbots.router import router as chatbots_router, public_router as chatbots_public_router
 
 app = FastAPI(
     title="Zelekpress Chatbots API",
@@ -44,3 +45,5 @@ app.include_router(companies_router)
 app.include_router(plans_public_router)
 app.include_router(plans_admin_router)
 app.include_router(admin_router)
+app.include_router(chatbots_router)
+app.include_router(chatbots_public_router)
