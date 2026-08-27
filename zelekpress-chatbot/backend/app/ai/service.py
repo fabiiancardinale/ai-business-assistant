@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.ai.provider import get_provider
+from app.knowledge.service import retrieve
 from app.models.chatbot import Chatbot, ChatbotSettings
 from app.models.conversation import Conversation, Message
 
@@ -49,8 +50,28 @@ def _history(db: Session, conv: Conversation) -> list[dict]:
     return out
 
 
+def _last_user_message(db: Session, conv: Conversation) -> str:
+    m = db.execute(
+        select(Message).where(Message.conversation_id == conv.id, Message.role == "visitor")
+        .order_by(Message.id.desc()).limit(1)
+    ).scalar_one_or_none()
+    return m.content if m else ""
+
+
 def build_messages(db: Session, bot: Chatbot, s: ChatbotSettings | None, conv: Conversation) -> list[dict]:
-    messages = [{"role": "system", "content": _system_prompt(bot, s)}]
+    system = _system_prompt(bot, s)
+
+    # RAG: recuperar fragmentos relevantes de la Knowledge Base para la
+    # última pregunta del visitante e inyectarlos como contexto.
+    question = _last_user_message(db, conv)
+    if question:
+        chunks = retrieve(db, conv.chatbot_id, question)
+        if chunks:
+            kb = "\n\n".join(f"- {c}" for c in chunks)
+            system += ("\n\nInformación del negocio (usá solo esto para responder; "
+                       "si la respuesta no está acá, decilo con honestidad):\n" + kb)
+
+    messages = [{"role": "system", "content": system}]
     messages.extend(_history(db, conv))
     return messages
 

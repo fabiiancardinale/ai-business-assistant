@@ -29,6 +29,13 @@ con IA. Producto propio de Zelekpress.
 >   conversación, con reglas anti-invención. Agregar OpenAI/Anthropic/etc. es
 >   sumar un adapter, sin tocar el resto.
 >
+> - **Fase 7 (Knowledge Base / RAG):** el chatbot aprende de **texto, FAQs,
+>   URLs y archivos (TXT/CSV/PDF)**. Pipeline: extraer → chunking →
+>   embeddings → guardar; en cada pregunta recupera los fragmentos más
+>   relevantes (similitud coseno) y los inyecta en el prompt. Embebedor local
+>   sin dependencias externas (se puede cambiar por uno con modelo + pgvector
+>   sin tocar el resto).
+>
 > Nota: el tiempo real corre en un solo proceso (in-memory). Para escalar a
 > varios workers se cambia el bus a Redis, sin tocar la lógica.
 
