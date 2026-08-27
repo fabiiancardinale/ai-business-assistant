@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.ai.provider import get_provider
-from app.knowledge.service import retrieve
+from app.knowledge.service import retrieve, has_sources, record_unanswered
 from app.models.chatbot import Chatbot, ChatbotSettings
 from app.models.conversation import Conversation, Message
 
@@ -70,6 +70,10 @@ def build_messages(db: Session, bot: Chatbot, s: ChatbotSettings | None, conv: C
             kb = "\n\n".join(f"- {c}" for c in chunks)
             system += ("\n\nInformación del negocio (usá solo esto para responder; "
                        "si la respuesta no está acá, decilo con honestidad):\n" + kb)
+        elif has_sources(db, conv.chatbot_id):
+            # Hay Knowledge Base cargada pero no cubrió esta pregunta:
+            # la registramos para que el cliente la sume al conocimiento.
+            record_unanswered(db, conv.company_id, conv.chatbot_id, question)
 
     messages = [{"role": "system", "content": system}]
     messages.extend(_history(db, conv))

@@ -29,9 +29,21 @@ class Embedder(Protocol):
 
 _token_re = re.compile(r"[a-záéíóúñü0-9]+", re.IGNORECASE)
 
+# Stopwords en español: no aportan a la relevancia y generarían falsos
+# positivos (que "en", "el", "de" hagan matchear textos no relacionados).
+_STOP = {
+    "el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "al",
+    "a", "en", "y", "o", "u", "que", "qué", "por", "para", "con", "sin", "es",
+    "son", "se", "su", "sus", "lo", "le", "les", "mi", "tu", "me", "te", "nos",
+    "si", "sí", "no", "más", "muy", "ya", "hay", "tiene", "tienen", "como",
+    "cuál", "cual", "cuánto", "cuanto", "dónde", "donde", "cuándo", "cuando",
+    "hola", "buenas", "gracias", "porfavor", "porfavor", "quiero", "necesito",
+    "puedo", "puede", "pueden", "sobre", "todo", "todos", "toda", "todas",
+}
+
 
 def _tokens(text: str) -> list[str]:
-    return _token_re.findall((text or "").lower())
+    return [t for t in _token_re.findall((text or "").lower()) if t not in _STOP and len(t) > 1]
 
 
 class HashingEmbedder:

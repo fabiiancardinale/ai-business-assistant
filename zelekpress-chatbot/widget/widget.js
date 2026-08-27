@@ -94,8 +94,16 @@
       + ".zp-title{ font-weight:700; font-size:15px; }"
       + ".zp-status{ font-size:12px; opacity:.85; display:flex; align-items:center; gap:5px; }"
       + ".zp-dot{ width:7px; height:7px; border-radius:50%; background:#22c55e; display:inline-block; }"
-      + ".zp-human{ margin-left:auto; background:transparent; border:none; color:inherit; font-size:16px; cursor:pointer; opacity:.85; }"
-      + ".zp-human:hover{ opacity:1; }"
+      + ".zp-lead{ margin-left:auto; background:transparent; border:none; color:inherit; font-size:16px; cursor:pointer; opacity:.85; }"
+      + ".zp-human{ background:transparent; border:none; color:inherit; font-size:16px; cursor:pointer; opacity:.85; }"
+      + ".zp-lead:hover, .zp-human:hover{ opacity:1; }"
+      + ".zp-leadform{ position:absolute; left:12px; right:12px; bottom:64px; background:#fff; color:#111827; border:1px solid #e5e7eb; border-radius:12px; padding:14px; box-shadow:0 12px 30px rgba(0,0,0,.18); display:none; flex-direction:column; gap:8px; }"
+      + ".zp-leadform.open{ display:flex; }"
+      + ".zp-leadform input{ height:36px; border:1px solid #d1d5db; border-radius:8px; padding:0 10px; font-size:13px; outline:none; }"
+      + ".zp-leadform .zp-lead-actions{ display:flex; gap:8px; }"
+      + ".zp-leadform button{ border:none; border-radius:8px; padding:9px 12px; font-size:13px; cursor:pointer; }"
+      + ".zp-lead-send{ background:" + (colors.primary || "#F0C030") + "; color:#fff; flex:1; }"
+      + ".zp-lead-cancel{ background:#eef0f3; color:#374151; }"
       + ".zp-close{ background:transparent; border:none; color:inherit; font-size:22px; cursor:pointer; line-height:1; }"
       + ".zp-msgs{ flex:1; padding:16px; overflow-y:auto; background:#f8fafc; display:flex; flex-direction:column; gap:" + (messages.spacing || 10) + "px; }"
       + ".zp-row{ display:flex; }"
@@ -119,10 +127,20 @@
       (header.show_logo === false ? "" : '<div class="zp-logo">' + headerLogo + "</div>") +
       "    <div><div class=\"zp-title\">" + esc(header.title || cfg.name_public || "Asistente") + "</div>" +
       '    <div class="zp-status"><span class="zp-dot"></span>' + esc(header.subtitle || "En línea") + "</div></div>" +
+      '    <button class="zp-lead" title="Dejar mis datos">📇</button>' +
       '    <button class="zp-human" title="Hablar con una persona">👤</button>' +
       '    <button class="zp-close" aria-label="Cerrar">&times;</button>' +
       "  </div>" +
       '  <div class="zp-msgs"></div>' +
+      '  <div class="zp-leadform">' +
+      '    <input type="text" class="zp-lead-name" placeholder="Tu nombre">' +
+      '    <input type="email" class="zp-lead-email" placeholder="Tu email">' +
+      '    <input type="text" class="zp-lead-phone" placeholder="Teléfono / WhatsApp">' +
+      '    <div class="zp-lead-actions">' +
+      '      <button class="zp-lead-send">Enviar</button>' +
+      '      <button class="zp-lead-cancel">Cancelar</button>' +
+      "    </div>" +
+      "  </div>" +
       '  <div class="zp-input">' +
       '    <input type="text" placeholder="Escribí un mensaje..." aria-label="Mensaje">' +
       '    <button class="zp-send" aria-label="Enviar">➤</button>' +
@@ -236,6 +254,28 @@
         .then(function (r) { return r.json(); })
         .then(function (d) { if (d.reply) addBubble(d.reply, "bot"); })
         .catch(function () {});
+    }
+
+    // Captura de leads
+    var leadBtn = root.querySelector(".zp-lead");
+    var leadForm = root.querySelector(".zp-leadform");
+    if (leadBtn && leadForm) {
+      leadBtn.addEventListener("click", function () { leadForm.classList.toggle("open"); });
+      root.querySelector(".zp-lead-cancel").addEventListener("click", function () { leadForm.classList.remove("open"); });
+      root.querySelector(".zp-lead-send").addEventListener("click", function () {
+        var name = root.querySelector(".zp-lead-name").value.trim();
+        var email = root.querySelector(".zp-lead-email").value.trim();
+        var phone = root.querySelector(".zp-lead-phone").value.trim();
+        if (!name && !email && !phone) return;
+        fetch(API + "/api/v1/public/chatbots/" + chatbotId + "/lead", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name, email: email, phone: phone, session_id: sessionId })
+        }).then(function () {
+          leadForm.classList.remove("open");
+          addBubble("¡Gracias! Te vamos a contactar. 🙌", "bot");
+        }).catch(function () {});
+      });
     }
 
     launcherBtn.addEventListener("click", openPanel);

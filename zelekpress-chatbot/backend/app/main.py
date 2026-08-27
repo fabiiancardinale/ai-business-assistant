@@ -18,6 +18,8 @@ from app.chatbots.router import router as chatbots_router, public_router as chat
 from app.chatbots.appearance_router import router as appearance_router
 from app.conversations.router import router as conversations_router
 from app.knowledge.router import router as knowledge_router
+from app.leads.router import router as leads_router
+from app.analytics.router import router as analytics_router
 from app.realtime.ws_router import router as ws_router
 
 app = FastAPI(
@@ -73,4 +75,6 @@ app.include_router(chatbots_public_router)
 app.include_router(appearance_router)
 app.include_router(conversations_router)
 app.include_router(knowledge_router)
+app.include_router(leads_router)
+app.include_router(analytics_router)
 app.include_router(ws_router)

@@ -285,6 +285,42 @@ def public_request_human(
     )
 
 
+@public_router.post("/{chatbot_id}/lead")
+def public_lead(
+    chatbot_id: int,
+    data: dict,
+    origin: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    """El visitante deja sus datos de contacto desde el widget."""
+    bot = db.get(Chatbot, chatbot_id)
+    if not bot or bot.status != "active":
+        raise HTTPException(status_code=404, detail="Chatbot no disponible")
+    if not _origin_allowed(bot, origin):
+        raise HTTPException(status_code=403, detail="Dominio no autorizado")
+
+    from app.models.lead import Lead
+    conv = None
+    if data.get("session_id"):
+        conv = db.scalar(select(Conversation).where(Conversation.token == data["session_id"]))
+
+    lead = Lead(
+        company_id=bot.company_id, chatbot_id=bot.id,
+        conversation_id=conv.id if conv else None,
+        name=(data.get("name") or None),
+        email=(data.get("email") or None),
+        phone=(data.get("phone") or None),
+        whatsapp=(data.get("whatsapp") or None),
+        company_name=(data.get("company") or None),
+        message=(data.get("message") or None),
+        source="chat",
+    )
+    db.add(lead)
+    db.commit()
+    db.refresh(lead)
+    return {"ok": True, "lead_id": lead.id}
+
+
 def _conv_by_token(db: Session, token: str | None, bot: Chatbot) -> Conversation:
     conv = db.scalar(select(Conversation).where(Conversation.token == token)) if token else None
     if not conv or conv.chatbot_id != bot.id:

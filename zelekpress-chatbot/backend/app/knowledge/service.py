@@ -115,6 +115,10 @@ def process_source(db: Session, source: KnowledgeSource) -> None:
 
 # ---------------------- retrieval ----------------------
 
+# Umbral mínimo de similitud para considerar un chunk "relevante".
+MIN_SCORE = 0.12
+
+
 def retrieve(db: Session, chatbot_id: int, query: str, k: int = TOP_K) -> list[str]:
     """Devuelve los fragmentos más relevantes para la pregunta."""
     q = query.strip()
@@ -128,6 +132,35 @@ def retrieve(db: Session, chatbot_id: int, query: str, k: int = TOP_K) -> list[s
 
     qvec = get_embedder().embed(q)
     scored = [(cosine(qvec, ch.embedding or []), ch.content) for ch in rows]
-    scored = [(s, c) for s, c in scored if s > 0]
+    scored = [(s, c) for s, c in scored if s > MIN_SCORE]
     scored.sort(key=lambda x: x[0], reverse=True)
     return [c for _, c in scored[:k]]
+
+
+def has_sources(db: Session, chatbot_id: int) -> bool:
+    from sqlalchemy import func
+    n = db.scalar(select(func.count()).select_from(KnowledgeSource)
+                  .where(KnowledgeSource.chatbot_id == chatbot_id)) or 0
+    return n > 0
+
+
+def record_unanswered(db: Session, company_id: int, chatbot_id: int, question: str) -> None:
+    """Registra (dedupe + contador) una pregunta que la KB no cubrió."""
+    import re as _re
+    from app.models.analytics import UnansweredQuestion
+    norm = _re.sub(r"\s+", " ", question.strip().lower())[:300]
+    if not norm:
+        return
+    existing = db.scalar(select(UnansweredQuestion).where(
+        UnansweredQuestion.chatbot_id == chatbot_id,
+        UnansweredQuestion.question_norm == norm,
+    ))
+    if existing:
+        existing.count += 1
+        existing.resolved = False
+    else:
+        db.add(UnansweredQuestion(
+            company_id=company_id, chatbot_id=chatbot_id,
+            question=question.strip()[:1000], question_norm=norm,
+        ))
+    db.commit()

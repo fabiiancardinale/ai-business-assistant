@@ -36,6 +36,12 @@ con IA. Producto propio de Zelekpress.
 >   sin dependencias externas (se puede cambiar por uno con modelo + pgvector
 >   sin tocar el resto).
 >
+> - **Fase 8 (Leads + Analytics):** captura de leads desde el widget
+>   (formulario 📇), bandeja de leads en el panel, métricas (conversaciones,
+>   mensajes, leads, pedidos de humano), serie temporal por día, y detección
+>   automática de **preguntas sin respuesta** (lo que la KB no cubrió) con
+>   acción de "agregar a la Knowledge Base" en un clic.
+>
 > Nota: el tiempo real corre en un solo proceso (in-memory). Para escalar a
 > varios workers se cambia el bus a Redis, sin tocar la lógica.
 
