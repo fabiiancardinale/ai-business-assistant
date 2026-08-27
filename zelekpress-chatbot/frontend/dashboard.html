@@ -53,6 +53,15 @@
     if (!res.ok) throw new Error(data && data.detail || "Error " + res.status);
     return data;
   }
+  async function apiUpload(path, formData) {
+    const headers = {};
+    if (LS.token) headers["Authorization"] = "Bearer " + LS.token;
+    if (LS.company) headers["X-Company-Id"] = LS.company;
+    const res = await fetch(LS.api + path, { method: "POST", headers, body: formData });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data && data.detail || "Error " + res.status);
+    return data;
+  }
   function Card({ title, sub, right, children }) {
     return /* @__PURE__ */ React.createElement("div", { className: "bg-slate-800/60 border border-slate-700 rounded-xl p-5 mb-5" }, (title || right) && /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ React.createElement("div", null, title && /* @__PURE__ */ React.createElement("h2", { className: "text-white font-semibold" }, title), sub && /* @__PURE__ */ React.createElement("p", { className: "text-slate-400 text-sm" }, sub)), right), children);
   }
@@ -235,13 +244,15 @@
       });
     }, [id]);
     if (!ap) return /* @__PURE__ */ React.createElement("p", { className: "text-slate-400" }, "Cargando\u2026");
-    const c = ap.colors, h = ap.header, l = ap.launcher;
+    const c = ap.colors, h = ap.header, l = ap.launcher, ly = ap.layout;
     const setColor = (k) => (e) => setAp({ ...ap, colors: { ...c, [k]: e.target.value } });
     const setHeader = (k) => (e) => setAp({ ...ap, header: { ...h, [k]: e.target.value } });
+    const setLauncher = (k, num) => (e) => setAp({ ...ap, launcher: { ...l, [k]: num ? parseInt(e.target.value) : e.target.value } });
+    const setLayout = (k, num) => (e) => setAp({ ...ap, layout: { ...ly, [k]: num ? parseInt(e.target.value) : e.target.value } });
     async function save() {
       setMsg("");
       try {
-        await api("PUT", "/api/v1/chatbots/" + id + "/appearance", { appearance: { colors: c, header: h, launcher: l } });
+        await api("PUT", "/api/v1/chatbots/" + id + "/appearance", { appearance: { colors: c, header: h, launcher: l, layout: ly } });
         setMsg("\u2713 Guardado");
       } catch (e) {
         setMsg("\u2715 " + e.message);
@@ -252,6 +263,21 @@
       setAp(r.appearance);
       setMsg("\u2713 Tema aplicado");
     }
+    async function uploadImage(target, file) {
+      setMsg("Subiendo\u2026");
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        const r = await apiUpload("/api/v1/chatbots/" + id + "/appearance/image?target=" + target, fd);
+        setAp(r.appearance);
+        setMsg("\u2713 Imagen subida");
+      } catch (e) {
+        setMsg("\u2715 " + e.message);
+      }
+    }
+    function clearImage() {
+      setAp({ ...ap, launcher: { ...l, image: null } });
+    }
     return /* @__PURE__ */ React.createElement("div", { className: "grid md:grid-cols-2 gap-5" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { title: "Temas" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2" }, presets.map((p) => /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -260,11 +286,21 @@
         className: "px-3 py-1.5 rounded-full text-sm bg-slate-800 border border-slate-700 hover:border-amber-400 text-slate-200"
       },
       p.label
-    )))), /* @__PURE__ */ React.createElement(Card, { title: "Colores y textos" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Principal" }, /* @__PURE__ */ React.createElement("input", { type: "color", value: c.primary, onChange: setColor("primary"), className: "w-16 h-10 rounded" })), /* @__PURE__ */ React.createElement(Field, { label: "Fondo" }, /* @__PURE__ */ React.createElement("input", { type: "color", value: c.background, onChange: setColor("background"), className: "w-16 h-10 rounded" })), /* @__PURE__ */ React.createElement(Field, { label: "Burbuja usuario" }, /* @__PURE__ */ React.createElement("input", { type: "color", value: c.user_bubble, onChange: setColor("user_bubble"), className: "w-16 h-10 rounded" })), /* @__PURE__ */ React.createElement(Field, { label: "Burbuja bot" }, /* @__PURE__ */ React.createElement("input", { type: "color", value: c.bot_bubble, onChange: setColor("bot_bubble"), className: "w-16 h-10 rounded" }))), /* @__PURE__ */ React.createElement(Field, { label: "T\xEDtulo del header" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: h.title, onChange: setHeader("title") })), /* @__PURE__ */ React.createElement(Field, { label: "Fondo del header" }, /* @__PURE__ */ React.createElement("input", { type: "color", value: h.bg_color, onChange: setHeader("bg_color"), className: "w-16 h-10 rounded" })), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement(Btn, { onClick: save }, "Guardar"), /* @__PURE__ */ React.createElement("span", { className: "text-sm text-slate-400" }, msg)))), /* @__PURE__ */ React.createElement(Card, { title: "Vista previa" }, /* @__PURE__ */ React.createElement(ChatPreview, { ap })));
+    )))), /* @__PURE__ */ React.createElement(Card, { title: "Bot\xF3n del chat (launcher)" }, /* @__PURE__ */ React.createElement(Field, { label: "\xCDcono (emoji)", hint: "Se usa si no sub\xEDs una imagen." }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: l.image ? "" : l.icon || "", onChange: setLauncher("icon"), maxLength: 4, placeholder: "\u{1F4AC}" })), /* @__PURE__ */ React.createElement(Field, { label: "Imagen (PNG/JPG/WEBP)" }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "file",
+        accept: "image/png,image/jpeg,image/webp",
+        onChange: (e) => e.target.files[0] && uploadImage("launcher", e.target.files[0]),
+        className: "text-sm text-slate-300"
+      }
+    )), l.image && /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 mb-3" }, /* @__PURE__ */ React.createElement("img", { src: LS.api + l.image, alt: "", className: "w-10 h-10 rounded-full object-cover border border-slate-600" }), /* @__PURE__ */ React.createElement("button", { onClick: clearImage, className: "text-red-300 text-sm" }, "Quitar imagen")), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Color del bot\xF3n" }, /* @__PURE__ */ React.createElement("input", { type: "color", value: l.color, onChange: setLauncher("color"), className: "w-16 h-10 rounded" })), /* @__PURE__ */ React.createElement(Field, { label: "Tama\xF1o (px)" }, /* @__PURE__ */ React.createElement("input", { type: "range", min: "48", max: "80", value: l.size, onChange: setLauncher("size", true) })))), /* @__PURE__ */ React.createElement(Card, { title: "Posici\xF3n y tama\xF1o" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Lado" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: ly.side, onChange: setLayout("side") }, /* @__PURE__ */ React.createElement("option", { value: "right" }, "Derecha"), /* @__PURE__ */ React.createElement("option", { value: "left" }, "Izquierda"))), /* @__PURE__ */ React.createElement(Field, { label: "Radio de bordes" }, /* @__PURE__ */ React.createElement("input", { type: "range", min: "0", max: "30", value: ly.radius, onChange: setLayout("radius", true) }))), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Ancho del chat" }, /* @__PURE__ */ React.createElement("input", { type: "range", min: "300", max: "440", value: ly.width, onChange: setLayout("width", true) })), /* @__PURE__ */ React.createElement(Field, { label: "Alto del chat" }, /* @__PURE__ */ React.createElement("input", { type: "range", min: "420", max: "640", value: ly.height, onChange: setLayout("height", true) })))), /* @__PURE__ */ React.createElement(Card, { title: "Colores y header" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Principal" }, /* @__PURE__ */ React.createElement("input", { type: "color", value: c.primary, onChange: setColor("primary"), className: "w-16 h-10 rounded" })), /* @__PURE__ */ React.createElement(Field, { label: "Fondo" }, /* @__PURE__ */ React.createElement("input", { type: "color", value: c.background, onChange: setColor("background"), className: "w-16 h-10 rounded" })), /* @__PURE__ */ React.createElement(Field, { label: "Burbuja usuario" }, /* @__PURE__ */ React.createElement("input", { type: "color", value: c.user_bubble, onChange: setColor("user_bubble"), className: "w-16 h-10 rounded" })), /* @__PURE__ */ React.createElement(Field, { label: "Burbuja bot" }, /* @__PURE__ */ React.createElement("input", { type: "color", value: c.bot_bubble, onChange: setColor("bot_bubble"), className: "w-16 h-10 rounded" }))), /* @__PURE__ */ React.createElement(Field, { label: "T\xEDtulo del header" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: h.title, onChange: setHeader("title") })), /* @__PURE__ */ React.createElement(Field, { label: "Subt\xEDtulo del header" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: h.subtitle, onChange: setHeader("subtitle") })), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Fondo header" }, /* @__PURE__ */ React.createElement("input", { type: "color", value: h.bg_color, onChange: setHeader("bg_color"), className: "w-16 h-10 rounded" })), /* @__PURE__ */ React.createElement(Field, { label: "Texto header" }, /* @__PURE__ */ React.createElement("input", { type: "color", value: h.text_color, onChange: setHeader("text_color"), className: "w-16 h-10 rounded" }))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement(Btn, { onClick: save }, "Guardar apariencia"), /* @__PURE__ */ React.createElement("span", { className: "text-sm text-slate-400" }, msg)))), /* @__PURE__ */ React.createElement(Card, { title: "Vista previa" }, /* @__PURE__ */ React.createElement(ChatPreview, { ap })));
   }
   function ChatPreview({ ap }) {
     const c = ap.colors, h = ap.header, l = ap.launcher;
-    return /* @__PURE__ */ React.createElement("div", { className: "rounded-xl overflow-hidden border border-slate-700", style: { width: 320, background: c.background } }, /* @__PURE__ */ React.createElement("div", { style: { background: h.bg_color, color: h.text_color, padding: "12px 14px", display: "flex", gap: 10, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 30, height: 30, borderRadius: "50%", background: c.primary, display: "flex", alignItems: "center", justifyContent: "center" } }, l.icon || "\u{1F916}"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14 } }, h.title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, opacity: 0.8 } }, "\u25CF ", h.subtitle))), /* @__PURE__ */ React.createElement("div", { style: { padding: 14, display: "flex", flexDirection: "column", gap: 8, background: "#f8fafc" } }, /* @__PURE__ */ React.createElement("div", { style: { alignSelf: "flex-start", background: c.bot_bubble, color: c.bot_text, padding: "8px 11px", borderRadius: "12px 12px 12px 4px", fontSize: 13, maxWidth: "80%" } }, h.title ? "\xA1Hola! \xBFEn qu\xE9 te ayudo?" : "Hola"), /* @__PURE__ */ React.createElement("div", { style: { alignSelf: "flex-end", background: c.user_bubble, color: c.user_text, padding: "8px 11px", borderRadius: "12px 12px 4px 12px", fontSize: 13, maxWidth: "80%" } }, "Quiero info")), /* @__PURE__ */ React.createElement("div", { style: { padding: 10, borderTop: "1px solid #e5e7eb", background: "#fff", display: "flex", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 34, border: "1px solid #d1d5db", borderRadius: 8 } }), /* @__PURE__ */ React.createElement("div", { style: { width: 34, height: 34, borderRadius: 8, background: c.primary } })));
+    const imgSrc = l.image ? l.image.startsWith("http") ? l.image : LS.api + l.image : null;
+    const logo = imgSrc ? /* @__PURE__ */ React.createElement("img", { src: imgSrc, alt: "", style: { width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" } }) : /* @__PURE__ */ React.createElement("span", null, l.icon || "\u{1F916}");
+    return /* @__PURE__ */ React.createElement("div", { className: "rounded-xl overflow-hidden border border-slate-700", style: { width: 320, background: c.background } }, /* @__PURE__ */ React.createElement("div", { style: { background: h.bg_color, color: h.text_color, padding: "12px 14px", display: "flex", gap: 10, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 30, height: 30, borderRadius: "50%", background: imgSrc ? "transparent" : c.primary, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" } }, logo), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14 } }, h.title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, opacity: 0.8 } }, "\u25CF ", h.subtitle))), /* @__PURE__ */ React.createElement("div", { style: { padding: 14, display: "flex", flexDirection: "column", gap: 8, background: "#f8fafc" } }, /* @__PURE__ */ React.createElement("div", { style: { alignSelf: "flex-start", background: c.bot_bubble, color: c.bot_text, padding: "8px 11px", borderRadius: "12px 12px 12px 4px", fontSize: 13, maxWidth: "80%" } }, h.title ? "\xA1Hola! \xBFEn qu\xE9 te ayudo?" : "Hola"), /* @__PURE__ */ React.createElement("div", { style: { alignSelf: "flex-end", background: c.user_bubble, color: c.user_text, padding: "8px 11px", borderRadius: "12px 12px 4px 12px", fontSize: 13, maxWidth: "80%" } }, "Quiero info")), /* @__PURE__ */ React.createElement("div", { style: { padding: 10, borderTop: "1px solid #e5e7eb", background: "#fff", display: "flex", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 34, border: "1px solid #d1d5db", borderRadius: 8 } }), /* @__PURE__ */ React.createElement("div", { style: { width: 34, height: 34, borderRadius: 8, background: c.primary } })));
   }
   function KnowledgeTab({ id }) {
     const [srcs, setSrcs] = useState([]);

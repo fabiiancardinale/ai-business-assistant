@@ -24,6 +24,16 @@ async function api(method, path, body) {
   return data;
 }
 
+async function apiUpload(path, formData) {
+  const headers = {};
+  if (LS.token) headers["Authorization"] = "Bearer " + LS.token;
+  if (LS.company) headers["X-Company-Id"] = LS.company;
+  const res = await fetch(LS.api + path, { method: "POST", headers, body: formData });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((data && data.detail) || ("Error " + res.status));
+  return data;
+}
+
 /* ========================= UI helpers ========================= */
 function Card({ title, sub, right, children }) {
   return (
@@ -286,13 +296,15 @@ function AppearanceTab({ id }) {
     api("GET", "/api/v1/themes/presets").then(setPresets).catch(() => {});
   }, [id]);
   if (!ap) return <p className="text-slate-400">Cargando…</p>;
-  const c = ap.colors, h = ap.header, l = ap.launcher;
+  const c = ap.colors, h = ap.header, l = ap.launcher, ly = ap.layout;
   const setColor = (k) => (e) => setAp({ ...ap, colors: { ...c, [k]: e.target.value } });
   const setHeader = (k) => (e) => setAp({ ...ap, header: { ...h, [k]: e.target.value } });
+  const setLauncher = (k, num) => (e) => setAp({ ...ap, launcher: { ...l, [k]: num ? parseInt(e.target.value) : e.target.value } });
+  const setLayout = (k, num) => (e) => setAp({ ...ap, layout: { ...ly, [k]: num ? parseInt(e.target.value) : e.target.value } });
   async function save() {
     setMsg("");
     try {
-      await api("PUT", "/api/v1/chatbots/" + id + "/appearance", { appearance: { colors: c, header: h, launcher: l } });
+      await api("PUT", "/api/v1/chatbots/" + id + "/appearance", { appearance: { colors: c, header: h, launcher: l, layout: ly } });
       setMsg("✓ Guardado");
     } catch (e) { setMsg("✕ " + e.message); }
   }
@@ -300,6 +312,16 @@ function AppearanceTab({ id }) {
     const r = await api("POST", "/api/v1/chatbots/" + id + "/appearance/apply-preset/" + key);
     setAp(r.appearance); setMsg("✓ Tema aplicado");
   }
+  async function uploadImage(target, file) {
+    setMsg("Subiendo…");
+    try {
+      const fd = new FormData(); fd.append("file", file);
+      const r = await apiUpload("/api/v1/chatbots/" + id + "/appearance/image?target=" + target, fd);
+      setAp(r.appearance); setMsg("✓ Imagen subida");
+    } catch (e) { setMsg("✕ " + e.message); }
+  }
+  function clearImage() { setAp({ ...ap, launcher: { ...l, image: null } }); }
+
   return (
     <div className="grid md:grid-cols-2 gap-5">
       <div>
@@ -311,7 +333,44 @@ function AppearanceTab({ id }) {
             ))}
           </div>
         </Card>
-        <Card title="Colores y textos">
+
+        <Card title="Botón del chat (launcher)">
+          <Field label="Ícono (emoji)" hint="Se usa si no subís una imagen.">
+            <input className={inputCls} value={l.image ? "" : (l.icon || "")} onChange={setLauncher("icon")} maxLength={4} placeholder="💬" />
+          </Field>
+          <Field label="Imagen (PNG/JPG/WEBP)">
+            <input type="file" accept="image/png,image/jpeg,image/webp"
+              onChange={(e) => e.target.files[0] && uploadImage("launcher", e.target.files[0])} className="text-sm text-slate-300" />
+          </Field>
+          {l.image && (
+            <div className="flex items-center gap-3 mb-3">
+              <img src={LS.api + l.image} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-600" />
+              <button onClick={clearImage} className="text-red-300 text-sm">Quitar imagen</button>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Color del botón"><input type="color" value={l.color} onChange={setLauncher("color")} className="w-16 h-10 rounded" /></Field>
+            <Field label="Tamaño (px)"><input type="range" min="48" max="80" value={l.size} onChange={setLauncher("size", true)} /></Field>
+          </div>
+        </Card>
+
+        <Card title="Posición y tamaño">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Lado">
+              <select className={inputCls} value={ly.side} onChange={setLayout("side")}>
+                <option value="right">Derecha</option>
+                <option value="left">Izquierda</option>
+              </select>
+            </Field>
+            <Field label="Radio de bordes"><input type="range" min="0" max="30" value={ly.radius} onChange={setLayout("radius", true)} /></Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Ancho del chat"><input type="range" min="300" max="440" value={ly.width} onChange={setLayout("width", true)} /></Field>
+            <Field label="Alto del chat"><input type="range" min="420" max="640" value={ly.height} onChange={setLayout("height", true)} /></Field>
+          </div>
+        </Card>
+
+        <Card title="Colores y header">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Principal"><input type="color" value={c.primary} onChange={setColor("primary")} className="w-16 h-10 rounded" /></Field>
             <Field label="Fondo"><input type="color" value={c.background} onChange={setColor("background")} className="w-16 h-10 rounded" /></Field>
@@ -319,8 +378,12 @@ function AppearanceTab({ id }) {
             <Field label="Burbuja bot"><input type="color" value={c.bot_bubble} onChange={setColor("bot_bubble")} className="w-16 h-10 rounded" /></Field>
           </div>
           <Field label="Título del header"><input className={inputCls} value={h.title} onChange={setHeader("title")} /></Field>
-          <Field label="Fondo del header"><input type="color" value={h.bg_color} onChange={setHeader("bg_color")} className="w-16 h-10 rounded" /></Field>
-          <div className="flex items-center gap-3"><Btn onClick={save}>Guardar</Btn><span className="text-sm text-slate-400">{msg}</span></div>
+          <Field label="Subtítulo del header"><input className={inputCls} value={h.subtitle} onChange={setHeader("subtitle")} /></Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Fondo header"><input type="color" value={h.bg_color} onChange={setHeader("bg_color")} className="w-16 h-10 rounded" /></Field>
+            <Field label="Texto header"><input type="color" value={h.text_color} onChange={setHeader("text_color")} className="w-16 h-10 rounded" /></Field>
+          </div>
+          <div className="flex items-center gap-3"><Btn onClick={save}>Guardar apariencia</Btn><span className="text-sm text-slate-400">{msg}</span></div>
         </Card>
       </div>
       <Card title="Vista previa">
@@ -332,10 +395,14 @@ function AppearanceTab({ id }) {
 
 function ChatPreview({ ap }) {
   const c = ap.colors, h = ap.header, l = ap.launcher;
+  const imgSrc = l.image ? (l.image.startsWith("http") ? l.image : LS.api + l.image) : null;
+  const logo = imgSrc
+    ? <img src={imgSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+    : <span>{l.icon || "🤖"}</span>;
   return (
     <div className="rounded-xl overflow-hidden border border-slate-700" style={{ width: 320, background: c.background }}>
       <div style={{ background: h.bg_color, color: h.text_color, padding: "12px 14px", display: "flex", gap: 10, alignItems: "center" }}>
-        <div style={{ width: 30, height: 30, borderRadius: "50%", background: c.primary, display: "flex", alignItems: "center", justifyContent: "center" }}>{l.icon || "🤖"}</div>
+        <div style={{ width: 30, height: 30, borderRadius: "50%", background: imgSrc ? "transparent" : c.primary, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>{logo}</div>
         <div><div style={{ fontWeight: 700, fontSize: 14 }}>{h.title}</div><div style={{ fontSize: 11, opacity: .8 }}>● {h.subtitle}</div></div>
       </div>
       <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 8, background: "#f8fafc" }}>
