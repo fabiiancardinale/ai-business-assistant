@@ -144,13 +144,13 @@
     )), !bots.length && /* @__PURE__ */ React.createElement("p", { className: "text-slate-500" }, "Todav\xEDa no ten\xE9s chatbots. Cre\xE1 el primero arriba.")));
   }
   function ChatbotDetail({ id, onBack }) {
-    const [tab, setTab] = useState("install");
+    const [tab, setTab] = useState("general");
     const [bot, setBot] = useState(null);
     useEffect(() => {
       api("GET", "/api/v1/chatbots/" + id).then(setBot);
     }, [id]);
     if (!bot) return /* @__PURE__ */ React.createElement("p", { className: "text-slate-400" }, "Cargando\u2026");
-    const tabs = [["install", "Instalaci\xF3n"], ["settings", "Configuraci\xF3n"], ["appearance", "Apariencia"], ["knowledge", "Conocimiento"]];
+    const tabs = [["general", "General"], ["install", "Instalaci\xF3n"], ["settings", "Configuraci\xF3n"], ["appearance", "Apariencia"], ["knowledge", "Conocimiento"]];
     return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "text-slate-400 text-sm mb-3" }, "\u2190 Volver a chatbots"), /* @__PURE__ */ React.createElement("h1", { className: "text-2xl font-bold mb-4" }, bot.name_public), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 mb-5 flex-wrap" }, tabs.map(([k, l]) => /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -159,7 +159,33 @@
         className: "px-3 py-1.5 rounded-lg text-sm " + (tab === k ? "bg-amber-400 text-slate-900 font-semibold" : "bg-slate-800 text-slate-300")
       },
       l
-    ))), tab === "install" && /* @__PURE__ */ React.createElement(InstallTab, { bot }), tab === "settings" && /* @__PURE__ */ React.createElement(SettingsTab, { id }), tab === "appearance" && /* @__PURE__ */ React.createElement(AppearanceTab, { id }), tab === "knowledge" && /* @__PURE__ */ React.createElement(KnowledgeTab, { id }));
+    ))), tab === "general" && /* @__PURE__ */ React.createElement(GeneralTab, { bot, onChanged: setBot, onDeleted: onBack }), tab === "install" && /* @__PURE__ */ React.createElement(InstallTab, { bot }), tab === "settings" && /* @__PURE__ */ React.createElement(SettingsTab, { id }), tab === "appearance" && /* @__PURE__ */ React.createElement(AppearanceTab, { id }), tab === "knowledge" && /* @__PURE__ */ React.createElement(KnowledgeTab, { id }));
+  }
+  function GeneralTab({ bot, onChanged, onDeleted }) {
+    const [name, setName] = useState(bot.name_public);
+    const [desc, setDesc] = useState(bot.description || "");
+    const [status, setStatus] = useState(bot.status);
+    const [msg, setMsg] = useState("");
+    async function save() {
+      setMsg("");
+      try {
+        const r = await api("PATCH", "/api/v1/chatbots/" + bot.id, { name_public: name, description: desc, status });
+        onChanged(r);
+        setMsg("\u2713 Guardado");
+      } catch (e) {
+        setMsg("\u2715 " + e.message);
+      }
+    }
+    async function del() {
+      if (!confirm("\xBFEliminar este chatbot? Se borran su conocimiento y conversaciones. No se puede deshacer.")) return;
+      try {
+        await api("DELETE", "/api/v1/chatbots/" + bot.id);
+        onDeleted();
+      } catch (e) {
+        setMsg("\u2715 " + e.message);
+      }
+    }
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, { title: "Datos del chatbot" }, /* @__PURE__ */ React.createElement(Field, { label: "Nombre visible" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: name, onChange: (e) => setName(e.target.value) })), /* @__PURE__ */ React.createElement(Field, { label: "Descripci\xF3n" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: desc, onChange: (e) => setDesc(e.target.value) })), /* @__PURE__ */ React.createElement(Field, { label: "Estado" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: status, onChange: (e) => setStatus(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "active" }, "Activo (visible en el sitio)"), /* @__PURE__ */ React.createElement("option", { value: "paused" }, "Pausado (no responde)"))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement(Btn, { onClick: save }, "Guardar cambios"), /* @__PURE__ */ React.createElement("span", { className: "text-sm text-slate-400" }, msg))), /* @__PURE__ */ React.createElement(Card, { title: "Zona de peligro", sub: "Eliminar el chatbot es permanente." }, /* @__PURE__ */ React.createElement(Btn, { kind: "danger", onClick: del }, "Eliminar chatbot")));
   }
   function InstallTab({ bot }) {
     const snippet = `<script

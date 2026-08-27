@@ -166,12 +166,12 @@ function ChatbotsPage({ onOpen }) {
 
 /* ========================= DETALLE DE CHATBOT ========================= */
 function ChatbotDetail({ id, onBack }) {
-  const [tab, setTab] = useState("install");
+  const [tab, setTab] = useState("general");
   const [bot, setBot] = useState(null);
   useEffect(() => { api("GET", "/api/v1/chatbots/" + id).then(setBot); }, [id]);
   if (!bot) return <p className="text-slate-400">Cargando…</p>;
 
-  const tabs = [["install", "Instalación"], ["settings", "Configuración"], ["appearance", "Apariencia"], ["knowledge", "Conocimiento"]];
+  const tabs = [["general", "General"], ["install", "Instalación"], ["settings", "Configuración"], ["appearance", "Apariencia"], ["knowledge", "Conocimiento"]];
   return (
     <div>
       <button onClick={onBack} className="text-slate-400 text-sm mb-3">← Volver a chatbots</button>
@@ -182,11 +182,49 @@ function ChatbotDetail({ id, onBack }) {
             className={"px-3 py-1.5 rounded-lg text-sm " + (tab === k ? "bg-amber-400 text-slate-900 font-semibold" : "bg-slate-800 text-slate-300")}>{l}</button>
         ))}
       </div>
+      {tab === "general" && <GeneralTab bot={bot} onChanged={setBot} onDeleted={onBack} />}
       {tab === "install" && <InstallTab bot={bot} />}
       {tab === "settings" && <SettingsTab id={id} />}
       {tab === "appearance" && <AppearanceTab id={id} />}
       {tab === "knowledge" && <KnowledgeTab id={id} />}
     </div>
+  );
+}
+
+function GeneralTab({ bot, onChanged, onDeleted }) {
+  const [name, setName] = useState(bot.name_public);
+  const [desc, setDesc] = useState(bot.description || "");
+  const [status, setStatus] = useState(bot.status);
+  const [msg, setMsg] = useState("");
+  async function save() {
+    setMsg("");
+    try {
+      const r = await api("PATCH", "/api/v1/chatbots/" + bot.id, { name_public: name, description: desc, status });
+      onChanged(r); setMsg("✓ Guardado");
+    } catch (e) { setMsg("✕ " + e.message); }
+  }
+  async function del() {
+    if (!confirm("¿Eliminar este chatbot? Se borran su conocimiento y conversaciones. No se puede deshacer.")) return;
+    try { await api("DELETE", "/api/v1/chatbots/" + bot.id); onDeleted(); }
+    catch (e) { setMsg("✕ " + e.message); }
+  }
+  return (
+    <>
+      <Card title="Datos del chatbot">
+        <Field label="Nombre visible"><input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} /></Field>
+        <Field label="Descripción"><input className={inputCls} value={desc} onChange={(e) => setDesc(e.target.value)} /></Field>
+        <Field label="Estado">
+          <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="active">Activo (visible en el sitio)</option>
+            <option value="paused">Pausado (no responde)</option>
+          </select>
+        </Field>
+        <div className="flex items-center gap-3"><Btn onClick={save}>Guardar cambios</Btn><span className="text-sm text-slate-400">{msg}</span></div>
+      </Card>
+      <Card title="Zona de peligro" sub="Eliminar el chatbot es permanente.">
+        <Btn kind="danger" onClick={del}>Eliminar chatbot</Btn>
+      </Card>
+    </>
   );
 }
 
