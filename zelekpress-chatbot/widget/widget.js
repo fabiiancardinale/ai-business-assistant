@@ -55,7 +55,11 @@
         header = t.header || {}, messages = t.messages || {};
     var side = layout.side === "left" ? "left" : "right";
     var offset = (launcher.position_side != null ? launcher.position_side : 24);
+    // La imagen puede venir como ruta relativa (/uploads/...). La hacemos
+    // absoluta contra el origen de la API, porque si no el navegador la busca
+    // en el dominio del sitio del cliente y da 404.
     var img = launcher.image || null;
+    if (img && img.indexOf("http") !== 0) img = API + img;
 
     // Host aislado
     var host = document.createElement("div");
