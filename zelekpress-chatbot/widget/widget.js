@@ -99,8 +99,12 @@
       + ".zp-status{ font-size:12px; opacity:.85; display:flex; align-items:center; gap:5px; }"
       + ".zp-dot{ width:7px; height:7px; border-radius:50%; background:#22c55e; display:inline-block; }"
       + ".zp-lead{ margin-left:auto; background:transparent; border:none; color:inherit; font-size:16px; cursor:pointer; opacity:.85; }"
-      + ".zp-human{ background:transparent; border:none; color:inherit; font-size:16px; cursor:pointer; opacity:.85; }"
+      + ".zp-human{ background:rgba(255,255,255,.16); border:none; color:inherit; font-size:15px; cursor:pointer; opacity:.95; border-radius:8px; padding:3px 7px; }"
       + ".zp-lead:hover, .zp-human:hover{ opacity:1; }"
+      + ".zp-human:hover{ background:rgba(255,255,255,.28); }"
+      + ".zp-humancta{ display:flex; align-items:center; justify-content:center; gap:7px; margin:0 12px 6px; padding:10px 12px; border:1.5px solid " + (colors.primary || "#F0C030") + "; color:#111827; background:#fff; border-radius:10px; cursor:pointer; font-size:13px; font-weight:600; transition:background .15s; }"
+      + ".zp-humancta:hover{ background:#fbf6e6; }"
+      + ".zp-humancta[disabled]{ opacity:.6; cursor:default; }"
       + ".zp-leadform{ position:absolute; left:12px; right:12px; bottom:64px; background:#fff; color:#111827; border:1px solid #e5e7eb; border-radius:12px; padding:14px; box-shadow:0 12px 30px rgba(0,0,0,.18); display:none; flex-direction:column; gap:8px; }"
       + ".zp-leadform.open{ display:flex; }"
       + ".zp-leadform input{ height:36px; border:1px solid #d1d5db; border-radius:8px; padding:0 10px; font-size:13px; outline:none; }"
@@ -145,6 +149,7 @@
       '      <button class="zp-lead-cancel">Cancelar</button>' +
       "    </div>" +
       "  </div>" +
+      '  <button class="zp-humancta" title="Hablar con una persona">🙋 Hablar con una persona</button>' +
       '  <div class="zp-input">' +
       '    <input type="text" placeholder="Escribí un mensaje..." aria-label="Mensaje">' +
       '    <button class="zp-send" aria-label="Enviar">➤</button>' +
@@ -160,6 +165,7 @@
     var launcherBtn = root.querySelector(".zp-launcher");
     var closeBtn = root.querySelector(".zp-close");
     var humanBtn = root.querySelector(".zp-human");
+    var humanCta = root.querySelector(".zp-humancta");
 
     var sessionId = null;
     var opened = false;
@@ -250,14 +256,20 @@
     }
 
     function requestHuman() {
+      if (humanCta) { humanCta.setAttribute("disabled", "true"); humanCta.textContent = "⏳ Conectando con una persona…"; }
       fetch(API + "/api/v1/public/chatbots/" + chatbotId + "/request-human", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: sessionId })
       })
         .then(function (r) { return r.json(); })
-        .then(function (d) { if (d.reply) addBubble(d.reply, "bot"); })
-        .catch(function () {});
+        .then(function (d) {
+          if (d.reply) addBubble(d.reply, "bot");
+          if (humanCta) humanCta.textContent = "✅ Un agente fue notificado";
+        })
+        .catch(function () {
+          if (humanCta) { humanCta.removeAttribute("disabled"); humanCta.textContent = "🙋 Hablar con una persona"; }
+        });
     }
 
     // Captura de leads

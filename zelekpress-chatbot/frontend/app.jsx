@@ -468,13 +468,52 @@ function KnowledgeTab({ id }) {
 }
 
 /* ========================= CONVERSACIONES ========================= */
+// Beep corto con WebAudio (sin archivos). Se activa tras la primera
+// interacción del agente con la página (los navegadores lo exigen).
+function beep() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ctx = beep._ctx || (beep._ctx = new AC());
+    if (ctx.state === "suspended") ctx.resume();
+    const t = ctx.currentTime;
+    [0, 0.22].forEach((off) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = "sine"; o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, t + off);
+      g.gain.exponentialRampToValueAtTime(0.35, t + off + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + off + 0.18);
+      o.start(t + off); o.stop(t + off + 0.2);
+    });
+  } catch (e) { /* silencioso */ }
+}
+
+// "Esperando": pidió humano y todavía NADIE la tomó. Es lo que dispara la
+// alerta y el sonido. Una vez tomada (assigned_agent_id), pasa a "en atención".
+const waiting = (c) => c.status !== "closed" && c.human_requested && !c.assigned_agent_id;
+const inCare = (c) => c.status === "human" && c.assigned_agent_id;
+
 function ConversationsPage() {
   const [list, setList] = useState([]);
   const [sel, setSel] = useState(null);
   const [detail, setDetail] = useState(null);
   const [reply, setReply] = useState("");
-  const load = useCallback(() => api("GET", "/api/v1/conversations").then(setList), []);
-  useEffect(() => { load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
+  const [muted, setMuted] = useState(false);
+  const seenHuman = useRef(null); // Set de ids ya vistos pidiendo humano
+
+  const load = useCallback(() => api("GET", "/api/v1/conversations").then((rows) => {
+    // Detectar nuevos pedidos de humano desde la última carga.
+    const now = new Set(rows.filter(waiting).map((c) => c.id));
+    if (seenHuman.current !== null) {
+      const isNew = [...now].some((id) => !seenHuman.current.has(id));
+      if (isNew && !muted) beep();
+    }
+    seenHuman.current = now;
+    setList(rows);
+  }).catch(() => {}), [muted]);
+
+  useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); }, [load]);
   useEffect(() => { if (sel) api("GET", "/api/v1/conversations/" + sel).then(setDetail); }, [sel, list]);
 
   async function send() {
@@ -484,26 +523,61 @@ function ConversationsPage() {
   }
   async function act(a) { await api("POST", "/api/v1/conversations/" + sel + "/" + a); load(); api("GET", "/api/v1/conversations/" + sel).then(setDetail); }
 
+  // Priorizar: primero los que esperan humano, luego en atención/abiertas, cerradas al final.
+  const rank = (c) => waiting(c) ? 0 : inCare(c) ? 1 : c.status === "closed" ? 3 : 2;
+  const sorted = [...list].sort((a, b) => rank(a) - rank(b) || b.id - a.id);
+  const pending = list.filter(waiting).length;
+
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Conversaciones</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Conversaciones</h1>
+        <button onClick={() => setMuted((m) => !m)} className="text-sm text-slate-400 hover:text-slate-200">
+          {muted ? "🔇 Sonido apagado" : "🔔 Sonido activado"}
+        </button>
+      </div>
+
+      {pending > 0 && (
+        <div className="mb-4 flex items-center gap-2 bg-amber-400/15 border border-amber-400/50 text-amber-200 rounded-xl px-4 py-3 animate-pulse">
+          <span className="text-xl">🔔</span>
+          <span className="font-semibold">{pending} conversación{pending > 1 ? "es" : ""} esperando a una persona.</span>
+        </div>
+      )}
+
       <div className="grid md:grid-cols-3 gap-4">
         <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-2 max-h-[70vh] overflow-y-auto">
-          {list.map((c) => (
-            <div key={c.id} onClick={() => setSel(c.id)}
-              className={"p-3 rounded-lg cursor-pointer " + (sel === c.id ? "bg-slate-700" : "hover:bg-slate-700/50")}>
-              <div className="text-sm text-white">#{c.id} · <span className={"text-xs " + (c.status === "human" ? "text-amber-400" : c.status === "closed" ? "text-slate-500" : "text-emerald-400")}>{c.status}</span>{c.human_requested && <span className="text-amber-400"> · 👤 pide humano</span>}</div>
-              <div className="text-xs text-slate-500">{c.last_message_at ? new Date(c.last_message_at).toLocaleString() : ""}</div>
-            </div>
-          ))}
+          {sorted.map((c) => {
+            const isWaiting = waiting(c), isCare = inCare(c);
+            return (
+              <div key={c.id} onClick={() => setSel(c.id)}
+                className={"p-3 rounded-lg cursor-pointer mb-1 border " +
+                  (isWaiting
+                    ? "border-amber-400/60 bg-amber-400/10 hover:bg-amber-400/20 " + (sel === c.id ? "ring-2 ring-amber-400" : "")
+                    : "border-transparent " + (sel === c.id ? "bg-slate-700" : "hover:bg-slate-700/50"))}>
+                <div className="text-sm text-white flex items-center gap-1.5">
+                  {isWaiting && <span className="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>}
+                  #{c.id}
+                  <span className={"text-xs " + (c.status === "human" ? "text-amber-400" : c.status === "closed" ? "text-slate-500" : "text-emerald-400")}>· {c.status}</span>
+                </div>
+                {isWaiting && <div className="text-xs font-semibold text-amber-300 mt-0.5">👤 Pide hablar con una persona</div>}
+                {isCare && <div className="text-xs text-sky-300 mt-0.5">🧑‍💼 En atención</div>}
+                <div className="text-xs text-slate-500 mt-0.5">{c.last_message_at ? new Date(c.last_message_at).toLocaleString() : ""}</div>
+              </div>
+            );
+          })}
           {!list.length && <p className="text-slate-500 p-3 text-sm">Sin conversaciones.</p>}
         </div>
         <div className="md:col-span-2 bg-slate-800/60 border border-slate-700 rounded-xl p-4 flex flex-col max-h-[70vh]">
           {!detail && <p className="text-slate-500">Elegí una conversación.</p>}
           {detail && (
             <>
+              {detail.human_requested && !detail.assigned_agent_id && detail.status !== "closed" && (
+                <div className="mb-3 bg-amber-400/15 border border-amber-400/50 text-amber-200 rounded-lg px-3 py-2 text-sm font-semibold">
+                  👤 El visitante pidió hablar con una persona. Tomá la conversación para responderle.
+                </div>
+              )}
               <div className="flex gap-2 mb-3 flex-wrap">
-                <Btn kind="ghost" onClick={() => act("take")}>Tomar</Btn>
+                <Btn kind={detail.human_requested && !detail.assigned_agent_id ? "primary" : "ghost"} onClick={() => act("take")}>Tomar</Btn>
                 <Btn kind="ghost" onClick={() => act("return-ai")}>Devolver a IA</Btn>
                 <Btn kind="danger" onClick={() => act("close")}>Cerrar</Btn>
               </div>

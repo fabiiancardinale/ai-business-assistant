@@ -334,15 +334,50 @@
     }
     return /* @__PURE__ */ React.createElement("div", null, err && /* @__PURE__ */ React.createElement("div", { className: "text-red-300 mb-3" }, err), /* @__PURE__ */ React.createElement(Card, { title: "Agregar texto / FAQ" }, /* @__PURE__ */ React.createElement(Field, { label: "Nombre" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: form.name, onChange: (e) => setForm({ ...form, name: e.target.value }) })), /* @__PURE__ */ React.createElement(Field, { label: "Contenido" }, /* @__PURE__ */ React.createElement("textarea", { rows: 4, className: inputCls, value: form.content, onChange: (e) => setForm({ ...form, content: e.target.value }) })), /* @__PURE__ */ React.createElement(Btn, { onClick: addText }, "Agregar texto")), /* @__PURE__ */ React.createElement(Card, { title: "Agregar desde una URL" }, /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, placeholder: "https://\u2026", value: form.url, onChange: (e) => setForm({ ...form, url: e.target.value }) }), /* @__PURE__ */ React.createElement(Btn, { onClick: addUrl, kind: "ghost" }, "Agregar URL"))), /* @__PURE__ */ React.createElement(Card, { title: "Fuentes de conocimiento" }, srcs.map((s) => /* @__PURE__ */ React.createElement("div", { key: s.id, className: "flex items-center justify-between border-b border-slate-700 py-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-white" }, s.name), " ", /* @__PURE__ */ React.createElement("span", { className: "text-xs text-slate-500" }, "\xB7 ", s.type, " \xB7 ", s.chunk_count, " fragmentos \xB7 ", /* @__PURE__ */ React.createElement("span", { className: s.status === "ready" ? "text-emerald-400" : s.status === "error" ? "text-red-400" : "text-slate-400" }, s.status))), /* @__PURE__ */ React.createElement("button", { onClick: () => del(s.id), className: "text-red-300 text-sm" }, "Eliminar"))), !srcs.length && /* @__PURE__ */ React.createElement("p", { className: "text-slate-500" }, "Sin fuentes todav\xEDa.")));
   }
+  function beep() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = beep._ctx || (beep._ctx = new AC());
+      if (ctx.state === "suspended") ctx.resume();
+      const t = ctx.currentTime;
+      [0, 0.22].forEach((off) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.type = "sine";
+        o.frequency.value = 880;
+        g.gain.setValueAtTime(1e-4, t + off);
+        g.gain.exponentialRampToValueAtTime(0.35, t + off + 0.02);
+        g.gain.exponentialRampToValueAtTime(1e-4, t + off + 0.18);
+        o.start(t + off);
+        o.stop(t + off + 0.2);
+      });
+    } catch (e) {
+    }
+  }
+  const waiting = (c) => c.status !== "closed" && c.human_requested && !c.assigned_agent_id;
+  const inCare = (c) => c.status === "human" && c.assigned_agent_id;
   function ConversationsPage() {
     const [list, setList] = useState([]);
     const [sel, setSel] = useState(null);
     const [detail, setDetail] = useState(null);
     const [reply, setReply] = useState("");
-    const load = useCallback(() => api("GET", "/api/v1/conversations").then(setList), []);
+    const [muted, setMuted] = useState(false);
+    const seenHuman = useRef(null);
+    const load = useCallback(() => api("GET", "/api/v1/conversations").then((rows) => {
+      const now = new Set(rows.filter(waiting).map((c) => c.id));
+      if (seenHuman.current !== null) {
+        const isNew = [...now].some((id) => !seenHuman.current.has(id));
+        if (isNew && !muted) beep();
+      }
+      seenHuman.current = now;
+      setList(rows);
+    }).catch(() => {
+    }), [muted]);
     useEffect(() => {
       load();
-      const t = setInterval(load, 5e3);
+      const t = setInterval(load, 4e3);
       return () => clearInterval(t);
     }, [load]);
     useEffect(() => {
@@ -359,16 +394,24 @@
       load();
       api("GET", "/api/v1/conversations/" + sel).then(setDetail);
     }
-    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h1", { className: "text-2xl font-bold mb-4" }, "Conversaciones"), /* @__PURE__ */ React.createElement("div", { className: "grid md:grid-cols-3 gap-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-slate-800/60 border border-slate-700 rounded-xl p-2 max-h-[70vh] overflow-y-auto" }, list.map((c) => /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        key: c.id,
-        onClick: () => setSel(c.id),
-        className: "p-3 rounded-lg cursor-pointer " + (sel === c.id ? "bg-slate-700" : "hover:bg-slate-700/50")
-      },
-      /* @__PURE__ */ React.createElement("div", { className: "text-sm text-white" }, "#", c.id, " \xB7 ", /* @__PURE__ */ React.createElement("span", { className: "text-xs " + (c.status === "human" ? "text-amber-400" : c.status === "closed" ? "text-slate-500" : "text-emerald-400") }, c.status), c.human_requested && /* @__PURE__ */ React.createElement("span", { className: "text-amber-400" }, " \xB7 \u{1F464} pide humano")),
-      /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-500" }, c.last_message_at ? new Date(c.last_message_at).toLocaleString() : "")
-    )), !list.length && /* @__PURE__ */ React.createElement("p", { className: "text-slate-500 p-3 text-sm" }, "Sin conversaciones.")), /* @__PURE__ */ React.createElement("div", { className: "md:col-span-2 bg-slate-800/60 border border-slate-700 rounded-xl p-4 flex flex-col max-h-[70vh]" }, !detail && /* @__PURE__ */ React.createElement("p", { className: "text-slate-500" }, "Eleg\xED una conversaci\xF3n."), detail && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 mb-3 flex-wrap" }, /* @__PURE__ */ React.createElement(Btn, { kind: "ghost", onClick: () => act("take") }, "Tomar"), /* @__PURE__ */ React.createElement(Btn, { kind: "ghost", onClick: () => act("return-ai") }, "Devolver a IA"), /* @__PURE__ */ React.createElement(Btn, { kind: "danger", onClick: () => act("close") }, "Cerrar")), /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto flex flex-col gap-2 mb-3" }, detail.messages.filter((m) => m.role !== "note").map((m) => /* @__PURE__ */ React.createElement("div", { key: m.id, className: "flex " + (m.role === "visitor" ? "justify-end" : "justify-start") }, /* @__PURE__ */ React.createElement("div", { className: "max-w-[80%] px-3 py-2 rounded-lg text-sm " + (m.role === "visitor" ? "bg-slate-900 text-slate-100" : m.role === "agent" ? "bg-amber-400 text-slate-900" : m.role === "system" ? "bg-slate-700/50 text-slate-400 italic" : "bg-slate-700 text-slate-100") }, m.content)))), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
+    const rank = (c) => waiting(c) ? 0 : inCare(c) ? 1 : c.status === "closed" ? 3 : 2;
+    const sorted = [...list].sort((a, b) => rank(a) - rank(b) || b.id - a.id);
+    const pending = list.filter(waiting).length;
+    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-4" }, /* @__PURE__ */ React.createElement("h1", { className: "text-2xl font-bold" }, "Conversaciones"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMuted((m) => !m), className: "text-sm text-slate-400 hover:text-slate-200" }, muted ? "\u{1F507} Sonido apagado" : "\u{1F514} Sonido activado")), pending > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-4 flex items-center gap-2 bg-amber-400/15 border border-amber-400/50 text-amber-200 rounded-xl px-4 py-3 animate-pulse" }, /* @__PURE__ */ React.createElement("span", { className: "text-xl" }, "\u{1F514}"), /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, pending, " conversaci\xF3n", pending > 1 ? "es" : "", " esperando a una persona.")), /* @__PURE__ */ React.createElement("div", { className: "grid md:grid-cols-3 gap-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-slate-800/60 border border-slate-700 rounded-xl p-2 max-h-[70vh] overflow-y-auto" }, sorted.map((c) => {
+      const isWaiting = waiting(c), isCare = inCare(c);
+      return /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          key: c.id,
+          onClick: () => setSel(c.id),
+          className: "p-3 rounded-lg cursor-pointer mb-1 border " + (isWaiting ? "border-amber-400/60 bg-amber-400/10 hover:bg-amber-400/20 " + (sel === c.id ? "ring-2 ring-amber-400" : "") : "border-transparent " + (sel === c.id ? "bg-slate-700" : "hover:bg-slate-700/50"))
+        },
+        /* @__PURE__ */ React.createElement("div", { className: "text-sm text-white flex items-center gap-1.5" }, isWaiting && /* @__PURE__ */ React.createElement("span", { className: "inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse" }), "#", c.id, /* @__PURE__ */ React.createElement("span", { className: "text-xs " + (c.status === "human" ? "text-amber-400" : c.status === "closed" ? "text-slate-500" : "text-emerald-400") }, "\xB7 ", c.status)),
+        isWaiting && /* @__PURE__ */ React.createElement("div", { className: "text-xs font-semibold text-amber-300 mt-0.5" }, "\u{1F464} Pide hablar con una persona"),
+        isCare && /* @__PURE__ */ React.createElement("div", { className: "text-xs text-sky-300 mt-0.5" }, "\u{1F9D1}\u200D\u{1F4BC} En atenci\xF3n"),
+        /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-500 mt-0.5" }, c.last_message_at ? new Date(c.last_message_at).toLocaleString() : "")
+      );
+    }), !list.length && /* @__PURE__ */ React.createElement("p", { className: "text-slate-500 p-3 text-sm" }, "Sin conversaciones.")), /* @__PURE__ */ React.createElement("div", { className: "md:col-span-2 bg-slate-800/60 border border-slate-700 rounded-xl p-4 flex flex-col max-h-[70vh]" }, !detail && /* @__PURE__ */ React.createElement("p", { className: "text-slate-500" }, "Eleg\xED una conversaci\xF3n."), detail && /* @__PURE__ */ React.createElement(React.Fragment, null, detail.human_requested && !detail.assigned_agent_id && detail.status !== "closed" && /* @__PURE__ */ React.createElement("div", { className: "mb-3 bg-amber-400/15 border border-amber-400/50 text-amber-200 rounded-lg px-3 py-2 text-sm font-semibold" }, "\u{1F464} El visitante pidi\xF3 hablar con una persona. Tom\xE1 la conversaci\xF3n para responderle."), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 mb-3 flex-wrap" }, /* @__PURE__ */ React.createElement(Btn, { kind: detail.human_requested && !detail.assigned_agent_id ? "primary" : "ghost", onClick: () => act("take") }, "Tomar"), /* @__PURE__ */ React.createElement(Btn, { kind: "ghost", onClick: () => act("return-ai") }, "Devolver a IA"), /* @__PURE__ */ React.createElement(Btn, { kind: "danger", onClick: () => act("close") }, "Cerrar")), /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto flex flex-col gap-2 mb-3" }, detail.messages.filter((m) => m.role !== "note").map((m) => /* @__PURE__ */ React.createElement("div", { key: m.id, className: "flex " + (m.role === "visitor" ? "justify-end" : "justify-start") }, /* @__PURE__ */ React.createElement("div", { className: "max-w-[80%] px-3 py-2 rounded-lg text-sm " + (m.role === "visitor" ? "bg-slate-900 text-slate-100" : m.role === "agent" ? "bg-amber-400 text-slate-900" : m.role === "system" ? "bg-slate-700/50 text-slate-400 italic" : "bg-slate-700 text-slate-100") }, m.content)))), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         className: inputCls,
