@@ -1,9 +1,14 @@
 const { useState, useEffect, useRef, useCallback } = React;
 
 /* ========================= estado global simple ========================= */
+// La API vive en el mismo dominio desde el que se sirve el panel (nginx
+// hace de proxy a /api, /uploads, /widget y /ws). Es fija y no se muestra.
+const API_BASE = (location.protocol === "https:" || location.protocol === "http:")
+  ? location.origin
+  : "https://app.zelekpress.com";
 const LS = {
-  get api() { return localStorage.getItem("zp_api") || "http://localhost:8000"; },
-  set api(v) { localStorage.setItem("zp_api", v); },
+  get api() { return API_BASE; },
+  set api(v) { /* fija: no se cambia desde el panel */ },
   get token() { return localStorage.getItem("zp_token") || ""; },
   set token(v) { v ? localStorage.setItem("zp_token", v) : localStorage.removeItem("zp_token"); },
   get company() { return localStorage.getItem("zp_company") || ""; },
@@ -78,7 +83,6 @@ const inputCls = "w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py
 /* ========================= LOGIN ========================= */
 function Login({ onLogged }) {
   const [mode, setMode] = useState("login");
-  const [apiBase, setApiBase] = useState(LS.api);
   const [form, setForm] = useState({ name: "", email: "", password: "", company_name: "" });
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
@@ -87,7 +91,6 @@ function Login({ onLogged }) {
   async function submit(e) {
     e.preventDefault();
     setErr(""); setLoading(true);
-    LS.api = apiBase.replace(/\/$/, "");
     try {
       if (mode === "register") {
         await api("POST", "/api/v1/auth/register", form);
@@ -115,9 +118,6 @@ function Login({ onLogged }) {
         )}
         <Field label="Email"><input type="email" className={inputCls} value={form.email} onChange={upd("email")} required /></Field>
         <Field label="Contraseña"><input type="password" className={inputCls} value={form.password} onChange={upd("password")} required /></Field>
-        <Field label="URL de la API" hint="Ej: http://localhost:8000 o https://api.zelekpress.com">
-          <input className={inputCls} value={apiBase} onChange={(e) => setApiBase(e.target.value)} />
-        </Field>
         <button type="submit" disabled={loading}
           className="w-full bg-amber-400 text-slate-900 font-bold rounded-lg py-2.5 mt-2 disabled:opacity-50">
           {loading ? "..." : mode === "login" ? "Ingresar" : "Crear cuenta"}
@@ -133,7 +133,7 @@ function Login({ onLogged }) {
 }
 
 /* ========================= CHATBOTS ========================= */
-function ChatbotsPage({ onOpen }) {
+function ChatbotsPage({ onOpen, isAdmin }) {
   const [bots, setBots] = useState([]);
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
@@ -151,12 +151,18 @@ function ChatbotsPage({ onOpen }) {
     <div>
       <h1 className="text-2xl font-bold mb-4">Chatbots</h1>
       {err && <div className="text-red-300 mb-3">{err}</div>}
-      <Card title="Nuevo chatbot" sub="El plan Chatbot Básico permite 1.">
-        <div className="flex gap-2">
-          <input className={inputCls} placeholder="Nombre del asistente" value={name} onChange={(e) => setName(e.target.value)} />
-          <Btn onClick={create}>Crear</Btn>
-        </div>
-      </Card>
+      {isAdmin ? (
+        <Card title="Nuevo chatbot" sub="Alta de bot para la empresa gestionada (solo Zelekpress).">
+          <div className="flex gap-2">
+            <input className={inputCls} placeholder="Nombre del asistente" value={name} onChange={(e) => setName(e.target.value)} />
+            <Btn onClick={create}>Crear</Btn>
+          </div>
+        </Card>
+      ) : (
+        <Card title="¿Necesitás un chatbot nuevo?">
+          <p className="text-slate-300 text-sm">El alta de chatbots la realiza el equipo de Zelekpress. Escribinos a <a className="text-amber-400" href="mailto:zelekpress@gmail.com">zelekpress@gmail.com</a> o al WhatsApp <b>+56 9 3660 0674</b> y lo activamos por vos. Una vez creado, lo configurás y administrás desde acá.</p>
+        </Card>
+      )}
       <div className="grid gap-3">
         {bots.map((b) => (
           <div key={b.id} onClick={() => onOpen(b.id)}
@@ -168,7 +174,7 @@ function ChatbotsPage({ onOpen }) {
             <span className="text-slate-500">→</span>
           </div>
         ))}
-        {!bots.length && <p className="text-slate-500">Todavía no tenés chatbots. Creá el primero arriba.</p>}
+        {!bots.length && <p className="text-slate-500">{isAdmin ? "Esta empresa no tiene chatbots. Creá el primero arriba." : "Todavía no tenés chatbots activos. Escribinos para dar de alta el tuyo."}</p>}
       </div>
     </div>
   );
@@ -957,7 +963,7 @@ function Shell({ me, companies, companyId, onSelectCompany, onRefreshCompanies, 
                 <p className="text-sm text-slate-400">Usá el desplegable <b>“Empresa activa”</b> arriba a la izquierda{isAdmin ? ", o entrá a 🏢 Empresas y tocá “Gestionar”" : ""}. Todo lo que crees o edites (chatbots, conocimiento, etc.) pertenece a la empresa seleccionada.</p>
               </div>
             )}
-            {companyId && page === "chatbots" && !botId && <ChatbotsPage onOpen={setBotId} />}
+            {companyId && page === "chatbots" && !botId && <ChatbotsPage onOpen={setBotId} isAdmin={isAdmin} />}
             {companyId && page === "chatbots" && botId && <ChatbotDetail id={botId} onBack={() => setBotId(null)} />}
             {companyId && page === "conversations" && <ConversationsPage />}
             {companyId && page === "leads" && <LeadsPage />}

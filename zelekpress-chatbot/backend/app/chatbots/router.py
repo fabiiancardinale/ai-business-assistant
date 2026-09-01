@@ -48,13 +48,18 @@ def list_chatbots(tenant: TenantContext = Depends(get_tenant), db: Session = Dep
 @router.post("", response_model=ChatbotOut, status_code=201)
 def create_chatbot(
     data: ChatbotCreate,
-    tenant: TenantContext = Depends(require_role("admin")),
+    tenant: TenantContext = Depends(get_tenant),
     db: Session = Depends(get_db),
 ):
-    # Respetar el límite de chatbots del plan (Chatbot Básico = 1).
-    # El Super Admin de la plataforma no tiene límite.
+    # La creación de chatbots es exclusiva del Super Admin de Zelekpress:
+    # el cliente registra su cuenta, pero el bot lo da de alta el equipo
+    # (típicamente después de confirmar el pago). El cliente sí puede
+    # configurar/administrar el bot una vez creado.
     if not tenant.user.is_platform_admin:
-        enforce_limit(db, tenant.company, "chatbots", Chatbot, Chatbot.company_id == tenant.company.id)
+        raise HTTPException(
+            status_code=403,
+            detail="La creación de chatbots la realiza el equipo de Zelekpress. Escribinos para activar tu bot.",
+        )
 
     bot = Chatbot(
         company_id=tenant.company.id,
